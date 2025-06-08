@@ -26,6 +26,9 @@ export default function ImageEditor() {
   const [isInitialized, setIsInitialized] = useState(false)
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
   const [hasMoved, setHasMoved] = useState(false)
+  const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null)
+  const [isDraggingLine, setIsDraggingLine] = useState(false)
+  const [lineDragOffset, setLineDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -129,14 +132,30 @@ export default function ImageEditor() {
     setInitialMousePos({ x: clientX, y: clientY })
     setHasMoved(false)
     
-    longPressTimerRef.current = setTimeout(() => {
-      if (!hasMoved) {
-        startDrawing(clientX, clientY)
-      }
-    }, 500)
+    // Check if clicking on a line
+    const coords = getCanvasCoordinates(clientX, clientY)
+    const clickedLineIndex = lines.findIndex(line => {
+      const distToLine = distanceToLineSegment(coords, line.start, line.end)
+      return distToLine < line.thickness / 2 + 5
+    })
     
-    setDragStart({ x: clientX - position.x, y: clientY - position.y })
-    setIsDragging(true)
+    if (clickedLineIndex !== -1) {
+      setSelectedLineIndex(clickedLineIndex)
+      const line = lines[clickedLineIndex]
+      setLineDragOffset({
+        x: coords.x - (line.start.x + line.end.x) / 2,
+        y: coords.y - (line.start.y + line.end.y) / 2
+      })
+    } else {
+      longPressTimerRef.current = setTimeout(() => {
+        if (!hasMoved) {
+          startDrawing(clientX, clientY)
+        }
+      }, 500)
+      
+      setDragStart({ x: clientX - position.x, y: clientY - position.y })
+      setIsDragging(true)
+    }
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -157,7 +176,23 @@ export default function ImageEditor() {
     
     if (isDrawing) {
       draw(e.clientX, e.clientY)
-    } else if (isDragging && !isDrawing) {
+    } else if (selectedLineIndex !== null && hasMoved) {
+      setIsDraggingLine(true)
+      const coords = getCanvasCoordinates(e.clientX, e.clientY)
+      const line = lines[selectedLineIndex]
+      const dx = line.end.x - line.start.x
+      const dy = line.end.y - line.start.y
+      const centerX = coords.x - lineDragOffset.x
+      const centerY = coords.y - lineDragOffset.y
+      
+      const newLines = [...lines]
+      newLines[selectedLineIndex] = {
+        ...line,
+        start: { x: centerX - dx / 2, y: centerY - dy / 2 },
+        end: { x: centerX + dx / 2, y: centerY + dy / 2 }
+      }
+      setLines(newLines)
+    } else if (isDragging && !isDrawing && !isDraggingLine) {
       requestAnimationFrame(() => {
         setPosition({
           x: e.clientX - dragStart.x,
@@ -173,24 +208,37 @@ export default function ImageEditor() {
     }
     
     if (Date.now() - drawStartTimeRef.current < 500 && !isDrawing && !hasMoved) {
-      const coords = getCanvasCoordinates(e.clientX, e.clientY)
-      const clickedLineIndex = lines.findIndex(line => {
-        const distToLine = distanceToLineSegment(coords, line.start, line.end)
-        return distToLine < line.thickness / 2 + 5
-      })
-      
-      if (clickedLineIndex !== -1) {
+      if (selectedLineIndex !== null) {
+        // Change thickness of selected line
         const newLines = [...lines]
-        const currentThickness = newLines[clickedLineIndex].thickness
+        const currentThickness = newLines[selectedLineIndex].thickness
         const currentIndex = THICKNESS_OPTIONS.indexOf(currentThickness)
         const nextIndex = (currentIndex + 1) % THICKNESS_OPTIONS.length
-        newLines[clickedLineIndex].thickness = THICKNESS_OPTIONS[nextIndex]
+        newLines[selectedLineIndex].thickness = THICKNESS_OPTIONS[nextIndex]
         setLines(newLines)
+      } else {
+        // Check if clicking on a line to change thickness
+        const coords = getCanvasCoordinates(e.clientX, e.clientY)
+        const clickedLineIndex = lines.findIndex(line => {
+          const distToLine = distanceToLineSegment(coords, line.start, line.end)
+          return distToLine < line.thickness / 2 + 5
+        })
+        
+        if (clickedLineIndex !== -1) {
+          const newLines = [...lines]
+          const currentThickness = newLines[clickedLineIndex].thickness
+          const currentIndex = THICKNESS_OPTIONS.indexOf(currentThickness)
+          const nextIndex = (currentIndex + 1) % THICKNESS_OPTIONS.length
+          newLines[clickedLineIndex].thickness = THICKNESS_OPTIONS[nextIndex]
+          setLines(newLines)
+        }
       }
     }
     
     stopDrawing()
     setIsDragging(false)
+    setIsDraggingLine(false)
+    setSelectedLineIndex(null)
     setInitialMousePos(null)
     setHasMoved(false)
   }
@@ -212,13 +260,29 @@ export default function ImageEditor() {
       setInitialMousePos({ x: touch.clientX, y: touch.clientY })
       setHasMoved(false)
       
-      longPressTimerRef.current = setTimeout(() => {
-        if (!hasMoved) {
-          startDrawing(touch.clientX, touch.clientY)
-        }
-      }, 500)
+      // Check if touching a line
+      const coords = getCanvasCoordinates(touch.clientX, touch.clientY)
+      const touchedLineIndex = lines.findIndex(line => {
+        const distToLine = distanceToLineSegment(coords, line.start, line.end)
+        return distToLine < line.thickness / 2 + 5
+      })
       
-      setDragStart({ x: touch.clientX - position.x, y: touch.clientY - position.y })
+      if (touchedLineIndex !== -1) {
+        setSelectedLineIndex(touchedLineIndex)
+        const line = lines[touchedLineIndex]
+        setLineDragOffset({
+          x: coords.x - (line.start.x + line.end.x) / 2,
+          y: coords.y - (line.start.y + line.end.y) / 2
+        })
+      } else {
+        longPressTimerRef.current = setTimeout(() => {
+          if (!hasMoved) {
+            startDrawing(touch.clientX, touch.clientY)
+          }
+        }, 500)
+        
+        setDragStart({ x: touch.clientX - position.x, y: touch.clientY - position.y })
+      }
     }
   }
 
@@ -269,7 +333,23 @@ export default function ImageEditor() {
       
       if (isDrawing) {
         draw(touch.clientX, touch.clientY)
-      } else if (!isDrawing) {
+      } else if (selectedLineIndex !== null && hasMoved) {
+        setIsDraggingLine(true)
+        const coords = getCanvasCoordinates(touch.clientX, touch.clientY)
+        const line = lines[selectedLineIndex]
+        const dx = line.end.x - line.start.x
+        const dy = line.end.y - line.start.y
+        const centerX = coords.x - lineDragOffset.x
+        const centerY = coords.y - lineDragOffset.y
+        
+        const newLines = [...lines]
+        newLines[selectedLineIndex] = {
+          ...line,
+          start: { x: centerX - dx / 2, y: centerY - dy / 2 },
+          end: { x: centerX + dx / 2, y: centerY + dy / 2 }
+        }
+        setLines(newLines)
+      } else if (!isDrawing && !isDraggingLine) {
         requestAnimationFrame(() => {
           setPosition({
             x: touch.clientX - dragStart.x,
@@ -292,24 +372,37 @@ export default function ImageEditor() {
     }
     
     if (Date.now() - drawStartTimeRef.current < 500 && !isDrawing && e.changedTouches[0] && !isPinchingRef.current && !hasMoved) {
-      const coords = getCanvasCoordinates(e.changedTouches[0].clientX, e.changedTouches[0].clientY)
-      const clickedLineIndex = lines.findIndex(line => {
-        const distToLine = distanceToLineSegment(coords, line.start, line.end)
-        return distToLine < line.thickness / 2 + 5
-      })
-      
-      if (clickedLineIndex !== -1) {
+      if (selectedLineIndex !== null) {
+        // Change thickness of selected line
         const newLines = [...lines]
-        const currentThickness = newLines[clickedLineIndex].thickness
+        const currentThickness = newLines[selectedLineIndex].thickness
         const currentIndex = THICKNESS_OPTIONS.indexOf(currentThickness)
         const nextIndex = (currentIndex + 1) % THICKNESS_OPTIONS.length
-        newLines[clickedLineIndex].thickness = THICKNESS_OPTIONS[nextIndex]
+        newLines[selectedLineIndex].thickness = THICKNESS_OPTIONS[nextIndex]
         setLines(newLines)
+      } else {
+        // Check if touching a line to change thickness
+        const coords = getCanvasCoordinates(e.changedTouches[0].clientX, e.changedTouches[0].clientY)
+        const clickedLineIndex = lines.findIndex(line => {
+          const distToLine = distanceToLineSegment(coords, line.start, line.end)
+          return distToLine < line.thickness / 2 + 5
+        })
+        
+        if (clickedLineIndex !== -1) {
+          const newLines = [...lines]
+          const currentThickness = newLines[clickedLineIndex].thickness
+          const currentIndex = THICKNESS_OPTIONS.indexOf(currentThickness)
+          const nextIndex = (currentIndex + 1) % THICKNESS_OPTIONS.length
+          newLines[clickedLineIndex].thickness = THICKNESS_OPTIONS[nextIndex]
+          setLines(newLines)
+        }
       }
     }
     
     stopDrawing()
     setIsDragging(false)
+    setIsDraggingLine(false)
+    setSelectedLineIndex(null)
     setInitialMousePos(null)
     setHasMoved(false)
   }
