@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "deploy": "npm run build && vercel --prod",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "login": "vercel login"
   },
   "dependencies": {
     "next": "14.2.3",
