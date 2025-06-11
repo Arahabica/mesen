@@ -11,6 +11,7 @@
     "login": "vercel login"
   },
   "dependencies": {
+    "lucide-react": "^0.514.0",
     "next": "14.2.3",
     "react": "^18",
     "react-dom": "^18"
