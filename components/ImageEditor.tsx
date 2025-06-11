@@ -1,421 +1,169 @@
 'use client'
 
-import React, { useState, useRef, useEffect, useCallback } from 'react'
-
-interface Line {
-  start: { x: number; y: number }
-  end: { x: number; y: number }
-  thickness: number
-}
-
-const THICKNESS_OPTIONS = [2, 5, 10, 20, 40, 60]
+import React, { useState, useRef, useCallback } from 'react'
+import LandingPage from './LandingPage'
+import CanvasEditor, { CanvasEditorRef } from './CanvasEditor'
+import { useDrawing } from '@/hooks/useDrawing'
+import { useZoomPan } from '@/hooks/useZoomPan'
+import { useTouch } from '@/hooks/useTouch'
+import { ImageSize } from '@/types/editor'
+import { LONG_PRESS_DURATION } from '@/constants/editor'
 
 export default function ImageEditor() {
   const [image, setImage] = useState<string | null>(null)
-  const [lines, setLines] = useState<Line[]>([])
-  const [currentLine, setCurrentLine] = useState<Line | null>(null)
-  const [isDrawing, setIsDrawing] = useState(false)
-  const [scale, setScale] = useState(1)
-  const [position, setPosition] = useState({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
-  const [lineThickness, setLineThickness] = useState(10)
-  const [drawStartPoint, setDrawStartPoint] = useState<{ x: number; y: number } | null>(null)
-  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
-  const [imageSize, setImageSize] = useState({ width: 0, height: 0 })
-  const [isInitialized, setIsInitialized] = useState(false)
+  const [lineThickness] = useState(10)
+  const [imageSize, setImageSize] = useState<ImageSize>({ width: 0, height: 0 })
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
-  const [hasMoved, setHasMoved] = useState(false)
-  const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null)
-  const [isDraggingLine, setIsDraggingLine] = useState(false)
-  const [lineDragOffset, setLineDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const longPressTimerRef = useRef<NodeJS.Timeout>()
-  const drawStartTimeRef = useRef<number>(0)
-  const isPinchingRef = useRef(false)
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setImage(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const getCanvasCoordinates = useCallback((clientX: number, clientY: number) => {
-    if (!canvasRef.current || !containerRef.current) return { x: 0, y: 0 }
-    const rect = containerRef.current.getBoundingClientRect()
-    return {
-      x: (clientX - rect.left - position.x) / scale,
-      y: (clientY - rect.top - position.y) / scale
-    }
-  }, [scale, position])
+  const canvasEditorRef = useRef<CanvasEditorRef>(null)
+  const mouseStartTimeRef = useRef<number>(0)
   
-  const distanceToLineSegment = (point: { x: number; y: number }, start: { x: number; y: number }, end: { x: number; y: number }) => {
-    const A = point.x - start.x
-    const B = point.y - start.y
-    const C = end.x - start.x
-    const D = end.y - start.y
-    
-    const dot = A * C + B * D
-    const lenSq = C * C + D * D
-    let param = -1
-    
-    if (lenSq !== 0) {
-      param = dot / lenSq
-    }
-    
-    let xx, yy
-    
-    if (param < 0) {
-      xx = start.x
-      yy = start.y
-    } else if (param > 1) {
-      xx = end.x
-      yy = end.y
-    } else {
-      xx = start.x + param * C
-      yy = start.y + param * D
-    }
-    
-    const dx = point.x - xx
-    const dy = point.y - yy
-    
-    return Math.sqrt(dx * dx + dy * dy)
+  const drawing = useDrawing(lineThickness)
+  const zoomPan = useZoomPan(imageSize, containerRef)
+  const touch = useTouch()
+
+  const handleImageSelect = (selectedImage: string) => {
+    setImage(selectedImage)
   }
 
-  const startDrawing = useCallback((clientX: number, clientY: number) => {
-    const coords = getCanvasCoordinates(clientX, clientY)
-    setIsDrawing(true)
-    setDrawStartPoint(coords)
-    setCurrentLine({
-      start: coords,
-      end: coords,
-      thickness: lineThickness
-    })
-  }, [getCanvasCoordinates, lineThickness])
+  const handleImageLoad = (width: number, height: number) => {
+    setImageSize({ width, height })
+  }
 
-  const draw = useCallback((clientX: number, clientY: number) => {
-    if (!isDrawing || !drawStartPoint) return
-    const coords = getCanvasCoordinates(clientX, clientY)
-    setCurrentLine({
-      start: drawStartPoint,
-      end: coords,
-      thickness: lineThickness
-    })
-  }, [isDrawing, drawStartPoint, getCanvasCoordinates, lineThickness])
-
-  const stopDrawing = useCallback(() => {
-    if (isDrawing && currentLine && drawStartPoint) {
-      const distance = Math.sqrt(
-        Math.pow(currentLine.end.x - currentLine.start.x, 2) + 
-        Math.pow(currentLine.end.y - currentLine.start.y, 2)
-      )
-      if (distance > 5) {
-        setLines([...lines, currentLine])
-      }
-    }
-    setIsDrawing(false)
-    setCurrentLine(null)
-    setDrawStartPoint(null)
-  }, [isDrawing, currentLine, lines, drawStartPoint])
-
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const { clientX, clientY } = e
-    drawStartTimeRef.current = Date.now()
+    mouseStartTimeRef.current = Date.now()
     setInitialMousePos({ x: clientX, y: clientY })
-    setHasMoved(false)
     
-    // Check if clicking on a line
-    const coords = getCanvasCoordinates(clientX, clientY)
-    const clickedLineIndex = lines.findIndex(line => {
-      const distToLine = distanceToLineSegment(coords, line.start, line.end)
-      return distToLine < line.thickness / 2 + 5
-    })
+    const coords = zoomPan.getCanvasCoordinates(clientX, clientY)
+    const clickedLineIndex = drawing.findLineAtPoint(coords)
     
     if (clickedLineIndex !== -1) {
-      setSelectedLineIndex(clickedLineIndex)
-      const line = lines[clickedLineIndex]
-      setLineDragOffset({
-        x: coords.x - (line.start.x + line.end.x) / 2,
-        y: coords.y - (line.start.y + line.end.y) / 2
-      })
+      drawing.selectLine(clickedLineIndex, coords)
     } else {
-      longPressTimerRef.current = setTimeout(() => {
-        if (!hasMoved) {
-          startDrawing(clientX, clientY)
+      setTimeout(() => {
+        if (!touch.hasMoved) {
+          drawing.startDrawing(coords)
         }
-      }, 500)
+      }, LONG_PRESS_DURATION)
       
-      setDragStart({ x: clientX - position.x, y: clientY - position.y })
-      setIsDragging(true)
+      zoomPan.startDragging(clientX, clientY)
     }
-  }
+  }, [drawing, zoomPan, touch.hasMoved])
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     
-    if (initialMousePos && !hasMoved) {
+    if (initialMousePos && !touch.hasMoved) {
       const distance = Math.sqrt(
         Math.pow(e.clientX - initialMousePos.x, 2) + 
         Math.pow(e.clientY - initialMousePos.y, 2)
       )
       if (distance > 5) {
-        setHasMoved(true)
-        if (longPressTimerRef.current) {
-          clearTimeout(longPressTimerRef.current)
-        }
+        // Mouse move doesn't need to call moveTouch since it's for touch events
       }
     }
     
-    if (isDrawing) {
-      draw(e.clientX, e.clientY)
-    } else if (selectedLineIndex !== null && hasMoved) {
-      setIsDraggingLine(true)
-      const coords = getCanvasCoordinates(e.clientX, e.clientY)
-      const line = lines[selectedLineIndex]
-      const dx = line.end.x - line.start.x
-      const dy = line.end.y - line.start.y
-      const centerX = coords.x - lineDragOffset.x
-      const centerY = coords.y - lineDragOffset.y
-      
-      const newLines = [...lines]
-      newLines[selectedLineIndex] = {
-        ...line,
-        start: { x: centerX - dx / 2, y: centerY - dy / 2 },
-        end: { x: centerX + dx / 2, y: centerY + dy / 2 }
-      }
-      setLines(newLines)
-    } else if (isDragging && !isDrawing && !isDraggingLine) {
-      requestAnimationFrame(() => {
-        setPosition({
-          x: e.clientX - dragStart.x,
-          y: e.clientY - dragStart.y
-        })
-      })
+    if (drawing.isDrawing) {
+      const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
+      drawing.draw(coords)
+    } else if (drawing.selectedLineIndex !== null && touch.hasMoved) {
+      const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
+      drawing.dragLine(coords)
+    } else if (zoomPan.isDragging && !drawing.isDrawing && !drawing.isDraggingLine) {
+      zoomPan.drag(e.clientX, e.clientY)
     }
-  }
+  }, [drawing, zoomPan, touch, initialMousePos])
 
-  const handleMouseUp = (e: React.MouseEvent) => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current)
-    }
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    touch.cleanup()
     
-    if (Date.now() - drawStartTimeRef.current < 500 && !isDrawing && !hasMoved) {
-      if (selectedLineIndex !== null) {
-        // Change thickness of selected line
-        const newLines = [...lines]
-        const currentThickness = newLines[selectedLineIndex].thickness
-        const currentIndex = THICKNESS_OPTIONS.indexOf(currentThickness)
-        const nextIndex = (currentIndex + 1) % THICKNESS_OPTIONS.length
-        newLines[selectedLineIndex].thickness = THICKNESS_OPTIONS[nextIndex]
-        setLines(newLines)
-      } else {
-        // Check if clicking on a line to change thickness
-        const coords = getCanvasCoordinates(e.clientX, e.clientY)
-        const clickedLineIndex = lines.findIndex(line => {
-          const distToLine = distanceToLineSegment(coords, line.start, line.end)
-          return distToLine < line.thickness / 2 + 5
-        })
-        
-        if (clickedLineIndex !== -1) {
-          const newLines = [...lines]
-          const currentThickness = newLines[clickedLineIndex].thickness
-          const currentIndex = THICKNESS_OPTIONS.indexOf(currentThickness)
-          const nextIndex = (currentIndex + 1) % THICKNESS_OPTIONS.length
-          newLines[clickedLineIndex].thickness = THICKNESS_OPTIONS[nextIndex]
-          setLines(newLines)
-        }
+    if (Date.now() - mouseStartTimeRef.current < LONG_PRESS_DURATION && !drawing.isDrawing && !touch.hasMoved) {
+      const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
+      const clickedLineIndex = drawing.findLineAtPoint(coords)
+      
+      if (clickedLineIndex !== -1) {
+        drawing.changeLineThickness(clickedLineIndex)
       }
     }
     
-    stopDrawing()
-    setIsDragging(false)
-    setIsDraggingLine(false)
-    setSelectedLineIndex(null)
+    drawing.stopDrawing()
+    drawing.stopDraggingLine()
+    zoomPan.stopDragging()
     setInitialMousePos(null)
-    setHasMoved(false)
-  }
+  }, [drawing, zoomPan, touch])
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
-    if (e.touches.length === 2) {
-      isPinchingRef.current = true
-      const touch1 = e.touches[0]
-      const touch2 = e.touches[1]
-      const distance = Math.sqrt(
-        Math.pow(touch2.clientX - touch1.clientX, 2) +
-        Math.pow(touch2.clientY - touch1.clientY, 2)
-      )
-      setLastTouchDistance(distance)
-    } else if (e.touches.length === 1) {
+    touch.startTouch(e.touches, () => {
       const touch = e.touches[0]
-      drawStartTimeRef.current = Date.now()
-      setInitialMousePos({ x: touch.clientX, y: touch.clientY })
-      setHasMoved(false)
-      
-      // Check if touching a line
-      const coords = getCanvasCoordinates(touch.clientX, touch.clientY)
-      const touchedLineIndex = lines.findIndex(line => {
-        const distToLine = distanceToLineSegment(coords, line.start, line.end)
-        return distToLine < line.thickness / 2 + 5
-      })
+      const coords = zoomPan.getCanvasCoordinates(touch.clientX, touch.clientY)
+      drawing.startDrawing(coords)
+    })
+    
+    if (e.touches.length === 1) {
+      const touchCoords = zoomPan.getCanvasCoordinates(e.touches[0].clientX, e.touches[0].clientY)
+      const touchedLineIndex = drawing.findLineAtPoint(touchCoords)
       
       if (touchedLineIndex !== -1) {
-        setSelectedLineIndex(touchedLineIndex)
-        const line = lines[touchedLineIndex]
-        setLineDragOffset({
-          x: coords.x - (line.start.x + line.end.x) / 2,
-          y: coords.y - (line.start.y + line.end.y) / 2
-        })
+        drawing.selectLine(touchedLineIndex, touchCoords)
       } else {
-        longPressTimerRef.current = setTimeout(() => {
-          if (!hasMoved) {
-            startDrawing(touch.clientX, touch.clientY)
-          }
-        }, 500)
-        
-        setDragStart({ x: touch.clientX - position.x, y: touch.clientY - position.y })
+        zoomPan.startDragging(e.touches[0].clientX, e.touches[0].clientY)
       }
     }
-  }
+  }, [touch, drawing, zoomPan])
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
-    if (e.touches.length === 2 && lastTouchDistance !== null) {
-      const touch1 = e.touches[0]
-      const touch2 = e.touches[1]
-      const currentDistance = Math.sqrt(
-        Math.pow(touch2.clientX - touch1.clientX, 2) +
-        Math.pow(touch2.clientY - touch1.clientY, 2)
-      )
-      
-      const centerX = (touch1.clientX + touch2.clientX) / 2
-      const centerY = (touch1.clientY + touch2.clientY) / 2
-      
-      const scaleFactor = currentDistance / lastTouchDistance
-      const newScale = Math.max(0.1, Math.min(5, scale * scaleFactor))
-      
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect()
-        const offsetX = centerX - rect.left
-        const offsetY = centerY - rect.top
-        
-        setPosition({
-          x: offsetX - (offsetX - position.x) * (newScale / scale),
-          y: offsetY - (offsetY - position.y) * (newScale / scale)
-        })
+    touch.moveTouch(e.touches)
+    
+    const pinchScale = touch.getPinchScale(e.touches)
+    if (pinchScale) {
+      const center = touch.getPinchCenter(e.touches)
+      if (center) {
+        zoomPan.handlePinchZoom(zoomPan.scale * pinchScale, center.x, center.y)
       }
+    } else if (e.touches.length === 1 && !touch.isPinching) {
+      const touchPos = e.touches[0]
       
-      setScale(newScale)
-      setLastTouchDistance(currentDistance)
-    } else if (e.touches.length === 1 && !isPinchingRef.current) {
-      const touch = e.touches[0]
-      
-      if (initialMousePos && !hasMoved) {
-        const distance = Math.sqrt(
-          Math.pow(touch.clientX - initialMousePos.x, 2) + 
-          Math.pow(touch.clientY - initialMousePos.y, 2)
-        )
-        if (distance > 5) {
-          setHasMoved(true)
-          if (longPressTimerRef.current) {
-            clearTimeout(longPressTimerRef.current)
-          }
-        }
-      }
-      
-      if (isDrawing) {
-        draw(touch.clientX, touch.clientY)
-      } else if (selectedLineIndex !== null && hasMoved) {
-        setIsDraggingLine(true)
-        const coords = getCanvasCoordinates(touch.clientX, touch.clientY)
-        const line = lines[selectedLineIndex]
-        const dx = line.end.x - line.start.x
-        const dy = line.end.y - line.start.y
-        const centerX = coords.x - lineDragOffset.x
-        const centerY = coords.y - lineDragOffset.y
-        
-        const newLines = [...lines]
-        newLines[selectedLineIndex] = {
-          ...line,
-          start: { x: centerX - dx / 2, y: centerY - dy / 2 },
-          end: { x: centerX + dx / 2, y: centerY + dy / 2 }
-        }
-        setLines(newLines)
-      } else if (!isDrawing && !isDraggingLine) {
-        requestAnimationFrame(() => {
-          setPosition({
-            x: touch.clientX - dragStart.x,
-            y: touch.clientY - dragStart.y
-          })
-        })
+      if (drawing.isDrawing) {
+        const coords = zoomPan.getCanvasCoordinates(touchPos.clientX, touchPos.clientY)
+        drawing.draw(coords)
+      } else if (drawing.selectedLineIndex !== null && touch.hasMoved) {
+        const coords = zoomPan.getCanvasCoordinates(touchPos.clientX, touchPos.clientY)
+        drawing.dragLine(coords)
+      } else if (!drawing.isDrawing && !drawing.isDraggingLine) {
+        zoomPan.drag(touchPos.clientX, touchPos.clientY)
       }
     }
-  }
+  }, [touch, drawing, zoomPan])
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
-    if (e.touches.length === 0) {
-      isPinchingRef.current = false
-      setLastTouchDistance(null)
-    }
+    touch.endTouch(e.touches)
     
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current)
-    }
-    
-    if (Date.now() - drawStartTimeRef.current < 500 && !isDrawing && e.changedTouches[0] && !isPinchingRef.current && !hasMoved) {
-      if (selectedLineIndex !== null) {
-        // Change thickness of selected line
-        const newLines = [...lines]
-        const currentThickness = newLines[selectedLineIndex].thickness
-        const currentIndex = THICKNESS_OPTIONS.indexOf(currentThickness)
-        const nextIndex = (currentIndex + 1) % THICKNESS_OPTIONS.length
-        newLines[selectedLineIndex].thickness = THICKNESS_OPTIONS[nextIndex]
-        setLines(newLines)
-      } else {
-        // Check if touching a line to change thickness
-        const coords = getCanvasCoordinates(e.changedTouches[0].clientX, e.changedTouches[0].clientY)
-        const clickedLineIndex = lines.findIndex(line => {
-          const distToLine = distanceToLineSegment(coords, line.start, line.end)
-          return distToLine < line.thickness / 2 + 5
-        })
-        
-        if (clickedLineIndex !== -1) {
-          const newLines = [...lines]
-          const currentThickness = newLines[clickedLineIndex].thickness
-          const currentIndex = THICKNESS_OPTIONS.indexOf(currentThickness)
-          const nextIndex = (currentIndex + 1) % THICKNESS_OPTIONS.length
-          newLines[clickedLineIndex].thickness = THICKNESS_OPTIONS[nextIndex]
-          setLines(newLines)
-        }
+    if (touch.isQuickTap() && e.changedTouches[0] && !touch.isPinching) {
+      const coords = zoomPan.getCanvasCoordinates(e.changedTouches[0].clientX, e.changedTouches[0].clientY)
+      const clickedLineIndex = drawing.findLineAtPoint(coords)
+      
+      if (clickedLineIndex !== -1) {
+        drawing.changeLineThickness(clickedLineIndex)
       }
     }
     
-    stopDrawing()
-    setIsDragging(false)
-    setIsDraggingLine(false)
-    setSelectedLineIndex(null)
-    setInitialMousePos(null)
-    setHasMoved(false)
-  }
+    drawing.stopDrawing()
+    drawing.stopDraggingLine()
+    zoomPan.stopDragging()
+  }, [touch, drawing, zoomPan])
 
+  const handleWheel = useCallback((e: WheelEvent) => {
+    e.preventDefault()
+    zoomPan.handleWheel(e.deltaY, e.clientX, e.clientY)
+  }, [zoomPan])
 
-  const undo = () => {
-    if (lines.length > 0) {
-      setLines(lines.slice(0, -1))
-    }
-  }
-
-  const download = () => {
-    const canvas = canvasRef.current
+  const download = useCallback(() => {
+    const canvas = canvasEditorRef.current?.getCanvas()
     if (!canvas || !image) return
     
     const img = new Image()
@@ -432,7 +180,7 @@ export default function ImageEditor() {
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
       
-      lines.forEach(line => {
+      drawing.lines.forEach(line => {
         ctx.lineWidth = line.thickness
         ctx.beginPath()
         ctx.moveTo(line.start.x, line.start.y)
@@ -452,175 +200,52 @@ export default function ImageEditor() {
       })
     }
     img.src = image
-  }
+  }, [image, drawing.lines])
 
-  const closeImage = () => {
+  const closeImage = useCallback(() => {
     setImage(null)
-    setLines([])
-    setScale(1)
-    setPosition({ x: 0, y: 0 })
-    setIsInitialized(false)
+    drawing.setLines([])
+    zoomPan.reset()
     setImageSize({ width: 0, height: 0 })
-  }
+  }, [drawing, zoomPan])
 
-  useEffect(() => {
-    const redrawCanvas = () => {
-      const canvas = canvasRef.current
-      if (!canvas || !image) return
-      
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-      
-      const img = new Image()
-      img.onload = () => {
-        canvas.width = img.width
-        canvas.height = img.height
-        setImageSize({ width: img.width, height: img.height })
-        
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(img, 0, 0)
-        
-        ctx.strokeStyle = 'black'
-        ctx.lineCap = 'round'
-        ctx.lineJoin = 'round'
-        
-        const allLines = currentLine ? [...lines, currentLine] : lines
-        allLines.forEach(line => {
-          ctx.lineWidth = line.thickness
-          ctx.beginPath()
-          ctx.moveTo(line.start.x, line.start.y)
-          ctx.lineTo(line.end.x, line.end.y)
-          ctx.stroke()
-        })
-      }
-      img.src = image
-    }
-    
-    redrawCanvas()
-  }, [image, lines, currentLine])
-  
-  useEffect(() => {
-    if (image && containerRef.current && imageSize.width > 0 && !isInitialized) {
-      const containerRect = containerRef.current.getBoundingClientRect()
-      const imgAspect = imageSize.width / imageSize.height
-      const containerAspect = containerRect.width / containerRect.height
-      
-      let initialScale = 1
-      if (imgAspect > containerAspect) {
-        initialScale = containerRect.width / imageSize.width
-      } else {
-        initialScale = containerRect.height / imageSize.height
-      }
-      
-      setScale(initialScale)
-      setPosition({
-        x: (containerRect.width - imageSize.width * initialScale) / 2,
-        y: (containerRect.height - imageSize.height * initialScale) / 2
-      })
-      setIsInitialized(true)
-    }
-  }, [imageSize, image, isInitialized])
-  
-  useEffect(() => {
+  React.useEffect(() => {
     const container = containerRef.current
-    if (!container) return
+    if (!container || !image) return
     
-    const handleWheelEvent = (e: WheelEvent) => {
-      e.preventDefault()
-      const delta = e.deltaY > 0 ? 0.9 : 1.1
-      const newScale = Math.max(0.1, Math.min(5, scale * delta))
-      
-      const rect = container.getBoundingClientRect()
-      const offsetX = e.clientX - rect.left
-      const offsetY = e.clientY - rect.top
-      
-      setPosition(prev => ({
-        x: offsetX - (offsetX - prev.x) * (newScale / scale),
-        y: offsetY - (offsetY - prev.y) * (newScale / scale)
-      }))
-      
-      setScale(newScale)
-    }
-    
-    container.addEventListener('wheel', handleWheelEvent, { passive: false })
+    container.addEventListener('wheel', handleWheel, { passive: false })
     
     return () => {
-      container.removeEventListener('wheel', handleWheelEvent)
+      container.removeEventListener('wheel', handleWheel)
     }
-  }, [scale])
+  }, [handleWheel, image])
 
   if (!image) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-        >
-          画像を選択する
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleImageSelect}
-          className="hidden"
-        />
-      </div>
-    )
+    return <LandingPage onImageSelect={handleImageSelect} />
   }
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-gray-900">
-      <div className="absolute top-4 left-4 bg-black/50 text-white p-2 rounded z-10 pointer-events-none">
-        <div>拡大率: {Math.round(scale * 100)}%</div>
-        <div>線の太さ: {lineThickness}px</div>
-      </div>
-      
-      <button
-        onClick={closeImage}
-        className="absolute top-4 right-4 w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 z-10"
-      >
-        ×
-      </button>
-      
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 z-10">
-        <button
-          onClick={undo}
-          className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-        >
-          元に戻す
-        </button>
-        <button
-          onClick={download}
-          className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-        >
-          ダウンロード
-        </button>
-      </div>
-      
-      <div
-        ref={containerRef}
-        className="w-full h-full"
+    <div ref={containerRef}>
+      <CanvasEditor
+        ref={canvasEditorRef}
+        image={image}
+        lines={drawing.lines}
+        currentLine={drawing.currentLine}
+        scale={zoomPan.scale}
+        position={zoomPan.position}
+        lineThickness={lineThickness}
+        isDrawing={drawing.isDrawing}
+        onImageLoad={handleImageLoad}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={stopDrawing}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ touchAction: 'none' }}
-      >
-        <canvas
-          ref={canvasRef}
-          className="absolute"
-          style={{
-            transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-            transformOrigin: 'top left',
-            cursor: isDrawing ? 'crosshair' : 'move',
-            imageRendering: 'auto'
-          }}
-        />
-      </div>
+        onUndo={drawing.undo}
+        onDownload={download}
+        onClose={closeImage}
+      />
     </div>
   )
 }
