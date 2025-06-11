@@ -23,20 +23,19 @@ export default function LandingPage({ onImageSelect }: LandingPageProps) {
       <div className="max-w-sm mx-auto">
         <div className="text-center mb-8">
           <img 
-            src="/ogp.png" 
+            src="/favicon.png" 
             alt="目線入れ" 
-            className="w-16 h-16 mx-auto mb-4 rounded-lg shadow-md"
+            className="w-20 h-20 mx-auto mb-4 rounded-lg shadow-md"
           />
           <h1 className="text-3xl font-bold text-gray-800 mb-2">目線入れ</h1>
           <p className="text-lg text-gray-600">
-            機能は黒線を引くことだけ！<br />
-            余計な編集機能なしの<br />
-            究極シンプル目隠しアプリ
+            余計な機能なしの<br />
+            究極シンプル目線入れアプリ
           </p>
         </div>
         
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">こんな時に便利！</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">こんな時に</h2>
           <div className="space-y-4">
             <div className="flex items-start space-x-3">
               <div className="flex-shrink-0 w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
