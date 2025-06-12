@@ -18,6 +18,8 @@ export default function ImageEditor() {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasEditorRef = useRef<CanvasEditorRef>(null)
   const mouseStartTimeRef = useRef<number>(0)
+  const mouseHasMovedRef = useRef<boolean>(false)
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
   
   const drawing = useDrawing(lineThickness)
   const zoomPan = useZoomPan(imageSize, containerRef)
@@ -35,6 +37,7 @@ export default function ImageEditor() {
     const { clientX, clientY } = e
     mouseStartTimeRef.current = Date.now()
     setInitialMousePos({ x: clientX, y: clientY })
+    mouseHasMovedRef.current = false
     
     const coords = zoomPan.getCanvasCoordinates(clientX, clientY)
     const clickedLineIndex = drawing.findLineAtPoint(coords)
@@ -42,44 +45,51 @@ export default function ImageEditor() {
     if (clickedLineIndex !== -1) {
       drawing.selectLine(clickedLineIndex, coords)
     } else {
-      setTimeout(() => {
-        if (!touch.hasMoved) {
+      longPressTimerRef.current = setTimeout(() => {
+        if (!mouseHasMovedRef.current) {
           drawing.startDrawing(coords)
         }
       }, LONG_PRESS_DURATION)
       
       zoomPan.startDragging(clientX, clientY)
     }
-  }, [drawing, zoomPan, touch.hasMoved])
+  }, [drawing, zoomPan])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     
-    if (initialMousePos && !touch.hasMoved) {
+    if (initialMousePos && !mouseHasMovedRef.current) {
       const distance = Math.sqrt(
         Math.pow(e.clientX - initialMousePos.x, 2) + 
         Math.pow(e.clientY - initialMousePos.y, 2)
       )
       if (distance > 5) {
-        // Mouse move doesn't need to call moveTouch since it's for touch events
+        mouseHasMovedRef.current = true
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current)
+          longPressTimerRef.current = null
+        }
       }
     }
     
     if (drawing.isDrawing) {
       const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
       drawing.draw(coords)
-    } else if (drawing.selectedLineIndex !== null && touch.hasMoved) {
+    } else if (drawing.selectedLineIndex !== null) {
       const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
       drawing.dragLine(coords)
     } else if (zoomPan.isDragging && !drawing.isDrawing && !drawing.isDraggingLine) {
       zoomPan.drag(e.clientX, e.clientY)
     }
-  }, [drawing, zoomPan, touch, initialMousePos])
+  }, [drawing, zoomPan, initialMousePos])
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
-    touch.cleanup()
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
     
-    if (Date.now() - mouseStartTimeRef.current < LONG_PRESS_DURATION && !drawing.isDrawing && !touch.hasMoved) {
+    if (Date.now() - mouseStartTimeRef.current < LONG_PRESS_DURATION && !drawing.isDrawing && !mouseHasMovedRef.current) {
       const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
       const clickedLineIndex = drawing.findLineAtPoint(coords)
       
@@ -92,7 +102,8 @@ export default function ImageEditor() {
     drawing.stopDraggingLine()
     zoomPan.stopDragging()
     setInitialMousePos(null)
-  }, [drawing, zoomPan, touch])
+    mouseHasMovedRef.current = false
+  }, [drawing, zoomPan])
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
