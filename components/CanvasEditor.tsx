@@ -134,7 +134,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
       
       <div
         ref={containerRef}
-        className="w-full h-full"
+        className="w-full h-dvh"
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
