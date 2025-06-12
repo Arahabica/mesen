@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { X, RotateCcw, Download } from 'lucide-react'
 import { Line } from '@/types/editor'
 
 interface CanvasEditorProps {
@@ -112,23 +113,26 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
       
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 z-10"
+        className="absolute top-4 right-4 w-12 h-12 bg-gray-700 text-gray-300 rounded-full flex items-center justify-center hover:bg-gray-600 transition-colors z-10"
+        aria-label="閉じる"
       >
-        ×
+        <X size={24} />
       </button>
       
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 z-10">
         <button
           onClick={onUndo}
-          className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+          className="w-12 h-12 bg-gray-700 text-gray-300 rounded-full flex items-center justify-center hover:bg-gray-600 transition-colors"
+          aria-label="元に戻す"
         >
-          元に戻す
+          <RotateCcw size={24} />
         </button>
         <button
           onClick={onDownload}
-          className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          className="w-12 h-12 bg-gray-700 text-gray-300 rounded-full flex items-center justify-center hover:bg-gray-600 transition-colors"
+          aria-label="ダウンロード"
         >
-          ダウンロード
+          <Download size={24} />
         </button>
       </div>
       
