@@ -19,7 +19,7 @@ export default function LandingPage({ onImageSelect }: LandingPageProps) {
   }
 
   return (
-    <div className="h-screen bg-white flex flex-col overflow-hidden">
+    <div className="h-dvh bg-white flex flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 py-8">
           <div className="max-w-sm mx-auto">

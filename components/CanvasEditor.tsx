@@ -105,7 +105,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   }, [])
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-gray-900">
+    <div className="relative w-screen h-dvh overflow-hidden bg-gray-900">
       <div className="absolute top-4 left-4 bg-black/50 text-white p-2 rounded z-10 pointer-events-none">
         <div>拡大率: {Math.round(scale * 100)}%</div>
         <div>線の太さ: {lineThickness}px</div>
