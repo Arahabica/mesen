@@ -8,6 +8,18 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
   const [isInitialized, setIsInitialized] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 })
+  
+  // Use refs to access current values in callbacks
+  const scaleRef = useRef(scale)
+  const positionRef = useRef(position)
+  
+  useEffect(() => {
+    scaleRef.current = scale
+  }, [scale])
+  
+  useEffect(() => {
+    positionRef.current = position
+  }, [position])
 
   const getCanvasCoordinates = useCallback((clientX: number, clientY: number) => {
     if (!containerRef.current) return { x: 0, y: 0 }
@@ -40,46 +52,60 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
   const handleWheel = useCallback((delta: number, clientX: number, clientY: number) => {
     if (!containerRef.current) return
     
-    const scaleFactor = delta > 0 ? 0.9 : 1.1
-    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * scaleFactor))
+    // Adjust zoom speed based on delta magnitude
+    const zoomSpeed = Math.min(Math.abs(delta) * 0.001, 0.1)
+    const scaleFactor = delta > 0 ? 1 - zoomSpeed : 1 + zoomSpeed
     
     const rect = containerRef.current.getBoundingClientRect()
     const mouseX = clientX - rect.left
     const mouseY = clientY - rect.top
     
-    // Calculate the position on the canvas before zoom
-    const canvasX = (mouseX - position.x) / scale
-    const canvasY = (mouseY - position.y) / scale
-    
-    // Calculate new position to keep the same canvas point under the mouse
-    setPosition({
-      x: mouseX - canvasX * newScale,
-      y: mouseY - canvasY * newScale
+    requestAnimationFrame(() => {
+      const currentScale = scaleRef.current
+      const currentPosition = positionRef.current
+      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, currentScale * scaleFactor))
+      
+      // Calculate the position on the canvas before zoom
+      const canvasX = (mouseX - currentPosition.x) / currentScale
+      const canvasY = (mouseY - currentPosition.y) / currentScale
+      
+      // Calculate new position to keep the same canvas point under the mouse
+      const newPosition = {
+        x: mouseX - canvasX * newScale,
+        y: mouseY - canvasY * newScale
+      }
+      
+      setScale(newScale)
+      setPosition(newPosition)
     })
-    
-    setScale(newScale)
-  }, [scale, position, containerRef])
+  }, [containerRef])
 
   const handlePinchZoom = useCallback((newScale: number, centerX: number, centerY: number) => {
     if (!containerRef.current) return
     
-    const clampedScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale))
-    const rect = containerRef.current.getBoundingClientRect()
-    const pinchX = centerX - rect.left
-    const pinchY = centerY - rect.top
-    
-    // Calculate the position on the canvas before zoom
-    const canvasX = (pinchX - position.x) / scale
-    const canvasY = (pinchY - position.y) / scale
-    
-    // Calculate new position to keep the same canvas point under the pinch center
-    setPosition({
-      x: pinchX - canvasX * clampedScale,
-      y: pinchY - canvasY * clampedScale
+    requestAnimationFrame(() => {
+      const clampedScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale))
+      const rect = containerRef.current!.getBoundingClientRect()
+      const pinchX = centerX - rect.left
+      const pinchY = centerY - rect.top
+      
+      const currentScale = scaleRef.current
+      const currentPosition = positionRef.current
+      
+      // Calculate the position on the canvas before zoom
+      const canvasX = (pinchX - currentPosition.x) / currentScale
+      const canvasY = (pinchY - currentPosition.y) / currentScale
+      
+      // Calculate new position to keep the same canvas point under the pinch center
+      const newPosition = {
+        x: pinchX - canvasX * clampedScale,
+        y: pinchY - canvasY * clampedScale
+      }
+      
+      setScale(clampedScale)
+      setPosition(newPosition)
     })
-    
-    setScale(clampedScale)
-  }, [scale, position, containerRef])
+  }, [containerRef])
 
   // Initialize zoom to fit image
   useEffect(() => {
