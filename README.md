@@ -95,12 +95,6 @@
 - **UI**: React 18
 - **ビルドツール**: Next.js (SSG)
 
-### 対応ブラウザ
-- Chrome/Chromium系（推奨）
-- Safari
-- Firefox
-- Edge
-
 ### API使用
 - **Canvas API**: 画像描画・線描画
 - **File API**: 画像ファイル読み込み
