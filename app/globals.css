@@ -12,3 +12,12 @@ html, body {
   height: 100%;
   overflow: hidden;
 }
+
+@keyframes flash {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}

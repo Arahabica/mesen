@@ -20,6 +20,7 @@ export default function ImageEditor() {
   const mouseStartTimeRef = useRef<number>(0)
   const mouseHasMovedRef = useRef<boolean>(false)
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const initialTouchRef = useRef<{ x: number; y: number } | null>(null)
   
   const drawing = useDrawing(lineThickness)
   const zoomPan = useZoomPan(imageSize, containerRef)
@@ -51,7 +52,10 @@ export default function ImageEditor() {
         }
       }, LONG_PRESS_DURATION)
       
-      zoomPan.startDragging(clientX, clientY)
+      // Only start dragging if we're in move mode
+      if (drawing.drawingMode === 'move') {
+        zoomPan.startDragging(clientX, clientY)
+      }
     }
   }, [drawing, zoomPan])
 
@@ -78,7 +82,7 @@ export default function ImageEditor() {
     } else if (drawing.selectedLineIndex !== null) {
       const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
       drawing.dragLine(coords)
-    } else if (zoomPan.isDragging && !drawing.isDrawing && !drawing.isDraggingLine) {
+    } else if (zoomPan.isDragging && !drawing.isDrawing && !drawing.isDraggingLine && drawing.drawingMode === 'move') {
       zoomPan.drag(e.clientX, e.clientY)
     }
   }, [drawing, zoomPan, initialMousePos])
@@ -107,21 +111,54 @@ export default function ImageEditor() {
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
-    touch.startTouch(e.touches, () => {
-      const touch = e.touches[0]
-      const coords = zoomPan.getCanvasCoordinates(touch.clientX, touch.clientY)
+    
+    if (e.touches.length !== 1) {
+      touch.startTouch(e.touches, () => {})
+      return
+    }
+    
+    const touchPoint = e.touches[0]
+    const touchCoords = {
+      x: touchPoint.clientX,
+      y: touchPoint.clientY
+    }
+    
+    // Store initial touch position for dragging
+    initialTouchRef.current = touchCoords
+    
+    const onLongPress = () => {
+      const coords = zoomPan.getCanvasCoordinates(touchCoords.x, touchCoords.y)
       drawing.startDrawing(coords)
-    })
+    }
+    
+    const onAdjustMode = () => {
+      // Use screen coordinates for loupe display
+      drawing.startAdjustMode(touchCoords)
+    }
+    
+    const onDrawMode = () => {
+      const coords = zoomPan.getCanvasCoordinates(touchCoords.x, touchCoords.y)
+      drawing.startDrawMode()
+      drawing.startDrawing(coords)
+    }
     
     if (e.touches.length === 1) {
       const touchCoords = zoomPan.getCanvasCoordinates(e.touches[0].clientX, e.touches[0].clientY)
       const touchedLineIndex = drawing.findLineAtPoint(touchCoords)
       
       if (touchedLineIndex !== -1) {
+        // If touching a line, select it
         drawing.selectLine(touchedLineIndex, touchCoords)
+        touch.startTouch(e.touches, onLongPress)
       } else {
+        // If not touching a line, start loupe mode or drag
+        touch.startTouch(e.touches, onLongPress, onAdjustMode, onDrawMode)
+        // Start dragging immediately for smooth panning
         zoomPan.startDragging(e.touches[0].clientX, e.touches[0].clientY)
       }
+    } else {
+      // Multi-touch for pinch zoom
+      touch.startTouch(e.touches, onLongPress)
     }
   }, [touch, drawing, zoomPan])
 
@@ -137,15 +174,22 @@ export default function ImageEditor() {
       }
     } else if (e.touches.length === 1 && !touch.isPinching) {
       const touchPos = e.touches[0]
+      const coords = zoomPan.getCanvasCoordinates(touchPos.clientX, touchPos.clientY)
+      
+      // Update loupe position in adjust/draw modes (use screen coordinates)
+      if (drawing.drawingMode === 'adjust' || drawing.drawingMode === 'draw') {
+        drawing.updateLoupePosition({ x: touchPos.clientX, y: touchPos.clientY })
+      }
       
       if (drawing.isDrawing) {
-        const coords = zoomPan.getCanvasCoordinates(touchPos.clientX, touchPos.clientY)
         drawing.draw(coords)
       } else if (drawing.selectedLineIndex !== null && touch.hasMoved) {
-        const coords = zoomPan.getCanvasCoordinates(touchPos.clientX, touchPos.clientY)
         drawing.dragLine(coords)
       } else if (!drawing.isDrawing && !drawing.isDraggingLine) {
-        zoomPan.drag(touchPos.clientX, touchPos.clientY)
+        // Allow dragging regardless of mode for smooth panning
+        if (drawing.drawingMode === 'move' && zoomPan.isDragging) {
+          zoomPan.drag(touchPos.clientX, touchPos.clientY)
+        }
       }
     }
   }, [touch, drawing, zoomPan])
@@ -166,6 +210,8 @@ export default function ImageEditor() {
     drawing.stopDrawing()
     drawing.stopDraggingLine()
     zoomPan.stopDragging()
+    drawing.resetMode()
+    initialTouchRef.current = null
   }, [touch, drawing, zoomPan])
 
   const handleWheel = useCallback((e: WheelEvent) => {
@@ -246,6 +292,9 @@ export default function ImageEditor() {
         position={zoomPan.position}
         lineThickness={lineThickness}
         isDrawing={drawing.isDrawing}
+        drawingMode={drawing.drawingMode}
+        loupeState={drawing.loupeState}
+        getCanvasCoordinates={zoomPan.getCanvasCoordinates}
         onImageLoad={handleImageLoad}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}

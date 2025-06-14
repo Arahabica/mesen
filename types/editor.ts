@@ -13,3 +13,11 @@ export interface ImageSize {
   width: number
   height: number
 }
+
+export type DrawingMode = 'move' | 'adjust' | 'draw'
+
+export interface LoupeState {
+  visible: boolean
+  position: Position
+  mode: DrawingMode
+}

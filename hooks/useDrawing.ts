@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Line, Position } from '@/types/editor'
+import { Line, Position, DrawingMode, LoupeState } from '@/types/editor'
 import { THICKNESS_OPTIONS, CLICK_DISTANCE_THRESHOLD } from '@/constants/editor'
 
 export function useDrawing(lineThickness: number) {
@@ -10,6 +10,12 @@ export function useDrawing(lineThickness: number) {
   const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null)
   const [isDraggingLine, setIsDraggingLine] = useState(false)
   const [lineDragOffset, setLineDragOffset] = useState<Position>({ x: 0, y: 0 })
+  const [drawingMode, setDrawingMode] = useState<DrawingMode>('move')
+  const [loupeState, setLoupeState] = useState<LoupeState>({
+    visible: false,
+    position: { x: 0, y: 0 },
+    mode: 'move'
+  })
 
   const distanceToLineSegment = (point: Position, start: Position, end: Position) => {
     const A = point.x - start.x
@@ -137,6 +143,41 @@ export function useDrawing(lineThickness: number) {
     return currentLine ? [...lines, currentLine] : lines
   }, [lines, currentLine])
 
+  const startAdjustMode = useCallback((coords: Position) => {
+    setDrawingMode('adjust')
+    setLoupeState({
+      visible: true,
+      position: coords,
+      mode: 'adjust'
+    })
+  }, [])
+
+  const startDrawMode = useCallback(() => {
+    setDrawingMode('draw')
+    setLoupeState(prev => ({
+      ...prev,
+      mode: 'draw'
+    }))
+  }, [])
+
+  const updateLoupePosition = useCallback((coords: Position) => {
+    if (loupeState.visible) {
+      setLoupeState(prev => ({
+        ...prev,
+        position: coords
+      }))
+    }
+  }, [loupeState.visible])
+
+  const resetMode = useCallback(() => {
+    setDrawingMode('move')
+    setLoupeState({
+      visible: false,
+      position: { x: 0, y: 0 },
+      mode: 'move'
+    })
+  }, [])
+
   return {
     lines,
     setLines,
@@ -144,6 +185,8 @@ export function useDrawing(lineThickness: number) {
     isDrawing,
     selectedLineIndex,
     isDraggingLine,
+    drawingMode,
+    loupeState,
     findLineAtPoint,
     startDrawing,
     draw,
@@ -153,6 +196,10 @@ export function useDrawing(lineThickness: number) {
     changeLineThickness,
     stopDraggingLine,
     undo,
-    getAllLines
+    getAllLines,
+    startAdjustMode,
+    startDrawMode,
+    updateLoupePosition,
+    resetMode
   }
 }

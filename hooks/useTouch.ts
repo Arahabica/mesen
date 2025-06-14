@@ -9,6 +9,8 @@ export function useTouch() {
   const longPressTimerRef = useRef<NodeJS.Timeout>()
   const isPinchingRef = useRef(false)
   const touchStartTimeRef = useRef<number>(0)
+  const adjustModeTimerRef = useRef<NodeJS.Timeout>()
+  const drawModeTimerRef = useRef<NodeJS.Timeout>()
 
   const getTouchDistance = (touch1: React.Touch, touch2: React.Touch) => {
     return Math.sqrt(
@@ -17,7 +19,9 @@ export function useTouch() {
     )
   }
 
-  const startTouch = useCallback((touches: React.TouchList, onLongPress: () => void) => {
+  const hasMovedRef = useRef(false)
+
+  const startTouch = useCallback((touches: React.TouchList, onLongPress: () => void, onAdjustMode?: () => void, onDrawMode?: () => void) => {
     if (touches.length === 2) {
       isPinchingRef.current = true
       const distance = getTouchDistance(touches[0], touches[1])
@@ -27,14 +31,32 @@ export function useTouch() {
       touchStartTimeRef.current = Date.now()
       setInitialTouchPos({ x: touch.clientX, y: touch.clientY })
       setHasMoved(false)
+      hasMovedRef.current = false
       
-      longPressTimerRef.current = setTimeout(() => {
-        if (!hasMoved) {
-          onLongPress()
+      // Start adjust mode after 0.5s
+      adjustModeTimerRef.current = setTimeout(() => {
+        if (!hasMovedRef.current && onAdjustMode) {
+          onAdjustMode()
+          
+          // Start draw mode after another 0.5s
+          drawModeTimerRef.current = setTimeout(() => {
+            if (!hasMovedRef.current && onDrawMode) {
+              onDrawMode()
+            }
+          }, LONG_PRESS_DURATION)
         }
       }, LONG_PRESS_DURATION)
+      
+      // Legacy long press for line selection - disabled when using loupe mode
+      if (!onAdjustMode) {
+        longPressTimerRef.current = setTimeout(() => {
+          if (!hasMovedRef.current) {
+            onLongPress()
+          }
+        }, LONG_PRESS_DURATION)
+      }
     }
-  }, [hasMoved])
+  }, [])
 
   const moveTouch = useCallback((touches: React.TouchList) => {
     if (touches.length === 1 && initialTouchPos && !hasMoved) {
@@ -45,8 +67,15 @@ export function useTouch() {
       )
       if (distance > CLICK_DISTANCE_THRESHOLD) {
         setHasMoved(true)
+        hasMovedRef.current = true
         if (longPressTimerRef.current) {
           clearTimeout(longPressTimerRef.current)
+        }
+        if (adjustModeTimerRef.current) {
+          clearTimeout(adjustModeTimerRef.current)
+        }
+        if (drawModeTimerRef.current) {
+          clearTimeout(drawModeTimerRef.current)
         }
       }
     }
@@ -60,6 +89,12 @@ export function useTouch() {
     
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current)
+    }
+    if (adjustModeTimerRef.current) {
+      clearTimeout(adjustModeTimerRef.current)
+    }
+    if (drawModeTimerRef.current) {
+      clearTimeout(drawModeTimerRef.current)
     }
     
     setInitialTouchPos(null)
@@ -93,6 +128,12 @@ export function useTouch() {
   const cleanup = useCallback(() => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current)
+    }
+    if (adjustModeTimerRef.current) {
+      clearTimeout(adjustModeTimerRef.current)
+    }
+    if (drawModeTimerRef.current) {
+      clearTimeout(drawModeTimerRef.current)
     }
   }, [])
 

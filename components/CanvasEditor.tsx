@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { X, RotateCcw, Download } from 'lucide-react'
-import { Line } from '@/types/editor'
+import { Line, LoupeState, DrawingMode } from '@/types/editor'
+import Loupe from './Loupe'
+import ModeTransitionFlash from './ModeTransitionFlash'
 
 interface CanvasEditorProps {
   image: string
@@ -10,6 +12,9 @@ interface CanvasEditorProps {
   position: { x: number; y: number }
   lineThickness: number
   isDrawing: boolean
+  drawingMode: DrawingMode
+  loupeState: LoupeState
+  getCanvasCoordinates: (screenX: number, screenY: number) => { x: number; y: number }
   onImageLoad: (width: number, height: number) => void
   onMouseDown: (e: React.MouseEvent) => void
   onMouseMove: (e: React.MouseEvent) => void
@@ -34,6 +39,9 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   position,
   lineThickness,
   isDrawing,
+  drawingMode,
+  loupeState,
+  getCanvasCoordinates,
   onImageLoad,
   onMouseDown,
   onMouseMove,
@@ -47,6 +55,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [modeTransitionTrigger, setModeTransitionTrigger] = React.useState(0)
 
   useImperativeHandle(ref, () => ({
     getCanvas: () => canvasRef.current
@@ -88,6 +97,23 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
     redrawCanvas()
   }, [image, lines, currentLine, onImageLoad])
 
+  // Vibration feedback for mode transitions
+  useEffect(() => {
+    if (drawingMode === 'adjust') {
+      // Short vibration for adjust mode
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50)
+      }
+      setModeTransitionTrigger(prev => prev + 1)
+    } else if (drawingMode === 'draw') {
+      // Longer vibration for draw mode
+      if ('vibrate' in navigator) {
+        navigator.vibrate(100)
+      }
+      setModeTransitionTrigger(prev => prev + 1)
+    }
+  }, [drawingMode])
+
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -106,6 +132,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
 
   return (
     <div className="relative w-screen h-dvh overflow-hidden bg-gray-900">
+      <ModeTransitionFlash trigger={modeTransitionTrigger} />
       <div className="absolute top-4 left-4 bg-black/50 text-white p-2 rounded z-10 pointer-events-none">
         <div>拡大率: {Math.round(scale * 100)}%</div>
         <div>線の太さ: {lineThickness}px</div>
@@ -157,6 +184,16 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
             cursor: isDrawing ? 'crosshair' : 'move',
             imageRendering: 'auto'
           }}
+        />
+        <Loupe
+          visible={loupeState.visible}
+          position={loupeState.position}
+          mode={loupeState.mode}
+          sourceCanvas={canvasRef.current}
+          lineThickness={lineThickness}
+          scale={scale}
+          imagePosition={position}
+          getCanvasCoordinates={getCanvasCoordinates}
         />
       </div>
     </div>
