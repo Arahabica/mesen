@@ -77,16 +77,16 @@ export default function Loupe({
     // Draw border
     ctx.restore()
     
-    // Draw animated green border when stationary in adjust mode
+    // Draw animated white border when stationary in adjust mode
     if (mode === 'adjust' && isStationary) {
       const progress = animationProgress
       
-      // Draw partial green border (clockwise from top)
+      // Draw partial white border (clockwise from top)
       ctx.beginPath()
       const startAngle = -Math.PI / 2  // Start from top
       const endAngle = startAngle + (progress * Math.PI * 2)
       ctx.arc(LOUPE_RADIUS, LOUPE_RADIUS, LOUPE_RADIUS - 1, startAngle, endAngle)
-      ctx.strokeStyle = 'rgba(124, 252, 0, 0.3)'  // Lime green with 0.3 opacity
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
       ctx.lineWidth = 3
       ctx.stroke()
       
