@@ -163,7 +163,7 @@ export default function ImageEditor() {
   }, [touch, drawing, zoomPan])
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    e.preventDefault()
+    // e.preventDefault()
     touch.moveTouch(e.touches)
     
     const pinchScale = touch.getPinchScale(e.touches)
