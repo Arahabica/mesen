@@ -165,13 +165,20 @@ export default function ImageEditor() {
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     // e.preventDefault()
     
-    // Handle pinch zoom first - this takes priority
+    // Handle pinch zoom and pan - this takes priority
     const pinchScale = touch.getPinchScale(e.touches)
     if (pinchScale) {
       const center = touch.getPinchCenter(e.touches)
       if (center) {
         zoomPan.handlePinchZoom(zoomPan.scale * pinchScale, center.x, center.y)
       }
+      
+      // Also handle pan based on pinch center movement
+      const pinchDelta = touch.getPinchCenterDelta(e.touches)
+      if (pinchDelta) {
+        zoomPan.pan(pinchDelta.x, pinchDelta.y)
+      }
+      
       // Don't process any other touch logic during pinch
       return
     }

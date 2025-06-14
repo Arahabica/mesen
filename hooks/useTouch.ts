@@ -13,6 +13,7 @@ export function useTouch() {
   const drawModeTimerRef = useRef<NodeJS.Timeout>()
   const lastTouchPositionRef = useRef<Position | null>(null)
   const isInAdjustModeRef = useRef(false)
+  const lastPinchCenterRef = useRef<Position | null>(null)
 
   const getTouchDistance = (touch1: React.Touch, touch2: React.Touch) => {
     return Math.sqrt(
@@ -28,6 +29,11 @@ export function useTouch() {
       isPinchingRef.current = true
       const distance = getTouchDistance(touches[0], touches[1])
       setLastTouchDistance(distance)
+      // Set initial pinch center
+      lastPinchCenterRef.current = {
+        x: (touches[0].clientX + touches[1].clientX) / 2,
+        y: (touches[0].clientY + touches[1].clientY) / 2
+      }
       // Clear any timers when starting pinch
       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
       if (adjustModeTimerRef.current) clearTimeout(adjustModeTimerRef.current)
@@ -119,6 +125,7 @@ export function useTouch() {
     if (touches.length === 0) {
       isPinchingRef.current = false
       setLastTouchDistance(null)
+      lastPinchCenterRef.current = null
       
       // Clear all timers
       if (longPressTimerRef.current) {
@@ -139,6 +146,7 @@ export function useTouch() {
     } else if (touches.length === 1 && isPinchingRef.current) {
       // Keep pinch state active if one finger is still down
       setLastTouchDistance(null)
+      lastPinchCenterRef.current = null
     }
   }, [])
 
@@ -161,6 +169,22 @@ export function useTouch() {
     }
     return null
   }
+  
+  const getPinchCenterDelta = useCallback((touches: React.TouchList) => {
+    if (touches.length === 2 && lastPinchCenterRef.current && isPinchingRef.current) {
+      const currentCenter = {
+        x: (touches[0].clientX + touches[1].clientX) / 2,
+        y: (touches[0].clientY + touches[1].clientY) / 2
+      }
+      const delta = {
+        x: currentCenter.x - lastPinchCenterRef.current.x,
+        y: currentCenter.y - lastPinchCenterRef.current.y
+      }
+      lastPinchCenterRef.current = currentCenter
+      return delta
+    }
+    return null
+  }, [])
 
   const isQuickTap = useCallback(() => {
     return Date.now() - touchStartTimeRef.current < LONG_PRESS_DURATION && !hasMoved
@@ -186,6 +210,7 @@ export function useTouch() {
     endTouch,
     getPinchScale,
     getPinchCenter,
+    getPinchCenterDelta,
     isQuickTap,
     cleanup
   }

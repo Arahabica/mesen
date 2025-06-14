@@ -130,6 +130,15 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
     }
   }, [imageSize, containerRef, isInitialized])
 
+  const pan = useCallback((deltaX: number, deltaY: number) => {
+    requestAnimationFrame(() => {
+      setPosition(prev => ({
+        x: prev.x + deltaX,
+        y: prev.y + deltaY
+      }))
+    })
+  }, [])
+
   const reset = useCallback(() => {
     setScale(1)
     setPosition({ x: 0, y: 0 })
@@ -146,6 +155,7 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
     stopDragging,
     handleWheel,
     handlePinchZoom,
+    pan,
     reset
   }
 }
