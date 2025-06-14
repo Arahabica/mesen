@@ -13,7 +13,7 @@ interface LoupeProps {
 }
 
 const LOUPE_RADIUS = 50
-const MAGNIFICATION = 2
+const MAGNIFICATION_FACTOR = 1.5
 
 export default function Loupe({
   visible,
@@ -49,7 +49,9 @@ export default function Loupe({
     const sourceY = canvasCoords.y
 
     // Draw magnified portion
-    const sourceSize = LOUPE_RADIUS / MAGNIFICATION
+    // The effective magnification is the current zoom scale * additional magnification factor
+    const effectiveMagnification = scale * MAGNIFICATION_FACTOR
+    const sourceSize = LOUPE_RADIUS / effectiveMagnification
     ctx.drawImage(
       sourceCanvas,
       sourceX - sourceSize,
@@ -64,7 +66,7 @@ export default function Loupe({
 
     // Draw center indicator
     ctx.beginPath()
-    ctx.arc(LOUPE_RADIUS, LOUPE_RADIUS, lineThickness * MAGNIFICATION / 2, 0, Math.PI * 2)
+    ctx.arc(LOUPE_RADIUS, LOUPE_RADIUS, lineThickness * effectiveMagnification / 2, 0, Math.PI * 2)
     ctx.fillStyle = mode === 'draw' ? 'rgba(0, 0, 0, 1)' : 'rgba(0, 0, 0, 0.5)'
     ctx.fill()
 
