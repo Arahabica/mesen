@@ -99,15 +99,10 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
 
   // Vibration feedback for mode transitions
   useEffect(() => {
-    if (drawingMode === 'adjust') {
-      // Short vibration for adjust mode
-      if ('vibrate' in navigator) {
-        navigator.vibrate(50)
-      }
-    } else if (drawingMode === 'draw') {
+    if (drawingMode === 'draw') {
       // Longer vibration for draw mode
       if ('vibrate' in navigator) {
-        navigator.vibrate(100)
+        navigator.vibrate(30)
       }
       setModeTransitionTrigger(prev => prev + 1)
     }
