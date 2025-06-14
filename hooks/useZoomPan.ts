@@ -40,32 +40,42 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
   const handleWheel = useCallback((delta: number, clientX: number, clientY: number) => {
     if (!containerRef.current) return
     
-    const scaleDelta = delta > 0 ? 0.9 : 1.1
-    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * scaleDelta))
+    const scaleFactor = delta > 0 ? 0.9 : 1.1
+    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * scaleFactor))
     
     const rect = containerRef.current.getBoundingClientRect()
-    const offsetX = clientX - rect.left
-    const offsetY = clientY - rect.top
+    const mouseX = clientX - rect.left
+    const mouseY = clientY - rect.top
     
-    setPosition(prev => ({
-      x: offsetX - (offsetX - prev.x) * (newScale / scale),
-      y: offsetY - (offsetY - prev.y) * (newScale / scale)
-    }))
+    // Calculate the position on the canvas before zoom
+    const canvasX = (mouseX - position.x) / scale
+    const canvasY = (mouseY - position.y) / scale
+    
+    // Calculate new position to keep the same canvas point under the mouse
+    setPosition({
+      x: mouseX - canvasX * newScale,
+      y: mouseY - canvasY * newScale
+    })
     
     setScale(newScale)
-  }, [scale, containerRef])
+  }, [scale, position, containerRef])
 
   const handlePinchZoom = useCallback((newScale: number, centerX: number, centerY: number) => {
     if (!containerRef.current) return
     
     const clampedScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale))
     const rect = containerRef.current.getBoundingClientRect()
-    const offsetX = centerX - rect.left
-    const offsetY = centerY - rect.top
+    const pinchX = centerX - rect.left
+    const pinchY = centerY - rect.top
     
+    // Calculate the position on the canvas before zoom
+    const canvasX = (pinchX - position.x) / scale
+    const canvasY = (pinchY - position.y) / scale
+    
+    // Calculate new position to keep the same canvas point under the pinch center
     setPosition({
-      x: offsetX - (offsetX - position.x) * (clampedScale / scale),
-      y: offsetY - (offsetY - position.y) * (clampedScale / scale)
+      x: pinchX - canvasX * clampedScale,
+      y: pinchY - canvasY * clampedScale
     })
     
     setScale(clampedScale)
