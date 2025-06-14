@@ -1,10 +1,11 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Position, DrawingMode } from '@/types/editor'
 
 interface LoupeProps {
   visible: boolean
   position: Position  // Screen coordinates
   mode: DrawingMode
+  isStationary?: boolean
   sourceCanvas: HTMLCanvasElement | null
   lineThickness: number
   scale: number
@@ -19,6 +20,7 @@ export default function Loupe({
   visible,
   position,
   mode,
+  isStationary = false,
   sourceCanvas,
   lineThickness,
   scale,
@@ -26,6 +28,8 @@ export default function Loupe({
   getCanvasCoordinates
 }: LoupeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [animationProgress, setAnimationProgress] = useState(0)
+  const animationFrameRef = useRef<number>()
 
   useEffect(() => {
     if (!visible || !sourceCanvas || !canvasRef.current) return
@@ -72,12 +76,69 @@ export default function Loupe({
 
     // Draw border
     ctx.restore()
-    ctx.beginPath()
-    ctx.arc(LOUPE_RADIUS, LOUPE_RADIUS, LOUPE_RADIUS - 1, 0, Math.PI * 2)
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)'
-    ctx.lineWidth = 2
-    ctx.stroke()
-  }, [visible, position, mode, sourceCanvas, lineThickness, scale, imagePosition])
+    
+    // Draw animated green border when stationary in adjust mode
+    if (mode === 'adjust' && isStationary) {
+      const progress = animationProgress
+      
+      // Draw partial green border (clockwise from top)
+      ctx.beginPath()
+      const startAngle = -Math.PI / 2  // Start from top
+      const endAngle = startAngle + (progress * Math.PI * 2)
+      ctx.arc(LOUPE_RADIUS, LOUPE_RADIUS, LOUPE_RADIUS - 1, startAngle, endAngle)
+      ctx.strokeStyle = '#7CFC00'  // Lime green
+      ctx.lineWidth = 3
+      ctx.stroke()
+      
+      // Draw remaining black border
+      if (progress < 1) {
+        ctx.beginPath()
+        ctx.arc(LOUPE_RADIUS, LOUPE_RADIUS, LOUPE_RADIUS - 1, endAngle, startAngle + Math.PI * 2)
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)'
+        ctx.lineWidth = 2
+        ctx.stroke()
+      }
+    } else {
+      // Normal black border
+      ctx.beginPath()
+      ctx.arc(LOUPE_RADIUS, LOUPE_RADIUS, LOUPE_RADIUS - 1, 0, Math.PI * 2)
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)'
+      ctx.lineWidth = 2
+      ctx.stroke()
+    }
+  }, [visible, position, mode, isStationary, sourceCanvas, lineThickness, scale, imagePosition, getCanvasCoordinates, animationProgress])
+
+  // Handle animation
+  useEffect(() => {
+    if (mode === 'adjust' && isStationary) {
+      const startTime = Date.now()
+      const duration = 500 // 0.5 seconds
+      
+      const animate = () => {
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(elapsed / duration, 1)
+        setAnimationProgress(progress)
+        
+        if (progress < 1) {
+          animationFrameRef.current = requestAnimationFrame(animate)
+        }
+      }
+      
+      animationFrameRef.current = requestAnimationFrame(animate)
+      
+      return () => {
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current)
+        }
+      }
+    } else {
+      // Reset animation when not stationary
+      setAnimationProgress(0)
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+    }
+  }, [mode, isStationary])
 
   if (!visible) return null
 

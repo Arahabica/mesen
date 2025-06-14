@@ -148,7 +148,8 @@ export function useDrawing(lineThickness: number) {
     setLoupeState({
       visible: true,
       position: coords,
-      mode: 'adjust'
+      mode: 'adjust',
+      isStationary: false  // Start with non-stationary
     })
   }, [])
 
@@ -160,14 +161,15 @@ export function useDrawing(lineThickness: number) {
     }))
   }, [])
 
-  const updateLoupePosition = useCallback((coords: Position) => {
+  const updateLoupePosition = useCallback((coords: Position, isStationary?: boolean) => {
     if (loupeState.visible) {
       setLoupeState(prev => ({
         ...prev,
-        position: coords
+        position: coords,
+        isStationary: drawingMode === 'adjust' ? isStationary : false
       }))
     }
-  }, [loupeState.visible])
+  }, [loupeState.visible, drawingMode])
 
   const resetMode = useCallback(() => {
     setDrawingMode('move')

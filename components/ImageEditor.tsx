@@ -200,7 +200,7 @@ export default function ImageEditor() {
       
       // Update loupe position in adjust/draw modes (use screen coordinates)
       if (drawing.drawingMode === 'adjust' || drawing.drawingMode === 'draw') {
-        drawing.updateLoupePosition({ x: touchPos.clientX, y: touchPos.clientY })
+        drawing.updateLoupePosition({ x: touchPos.clientX, y: touchPos.clientY }, touch.isStationary)
       }
       
       if (drawing.isDrawing) {

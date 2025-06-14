@@ -20,4 +20,5 @@ export interface LoupeState {
   visible: boolean
   position: Position
   mode: DrawingMode
+  isStationary?: boolean
 }

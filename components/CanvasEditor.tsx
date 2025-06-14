@@ -189,6 +189,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           visible={loupeState.visible}
           position={loupeState.position}
           mode={loupeState.mode}
+          isStationary={loupeState.isStationary}
           sourceCanvas={canvasRef.current}
           lineThickness={lineThickness}
           scale={scale}

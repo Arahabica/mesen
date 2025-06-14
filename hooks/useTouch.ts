@@ -14,6 +14,8 @@ export function useTouch() {
   const lastTouchPositionRef = useRef<Position | null>(null)
   const isInAdjustModeRef = useRef(false)
   const lastPinchCenterRef = useRef<Position | null>(null)
+  const isStationaryRef = useRef(false)
+  const stationaryStartPosRef = useRef<Position | null>(null)
 
   const getTouchDistance = (touch1: React.Touch, touch2: React.Touch) => {
     return Math.sqrt(
@@ -50,6 +52,9 @@ export function useTouch() {
         if (!hasMovedRef.current && onAdjustMode && !isPinchingRef.current) {
           onAdjustMode()
           isInAdjustModeRef.current = true
+          // Initialize as non-stationary when entering adjust mode
+          isStationaryRef.current = false
+          lastTouchPositionRef.current = { x: touch.clientX, y: touch.clientY }
         }
       }, LONG_PRESS_DURATION)
       
@@ -94,25 +99,47 @@ export function useTouch() {
       }
       
       // In adjust mode, check if finger has stopped moving
-      if (isInAdjustModeRef.current && lastTouchPositionRef.current) {
-        const moveDistance = Math.sqrt(
-          Math.pow(currentPos.x - lastTouchPositionRef.current.x, 2) + 
-          Math.pow(currentPos.y - lastTouchPositionRef.current.y, 2)
-        )
-        
-        // Clear existing timer if finger is moving
-        if (moveDistance > 2 && drawModeTimerRef.current) {
-          clearTimeout(drawModeTimerRef.current)
-          drawModeTimerRef.current = undefined
-        }
-        
-        // Start new timer if finger stopped
-        if (moveDistance <= 2 && !drawModeTimerRef.current && onDrawMode) {
-          drawModeTimerRef.current = setTimeout(() => {
-            if (isInAdjustModeRef.current && onDrawMode && !isPinchingRef.current) {
-              onDrawMode()
+      if (isInAdjustModeRef.current) {
+        if (lastTouchPositionRef.current) {
+          const frameDistance = Math.sqrt(
+            Math.pow(currentPos.x - lastTouchPositionRef.current.x, 2) + 
+            Math.pow(currentPos.y - lastTouchPositionRef.current.y, 2)
+          )
+          
+          // Check movement from stationary start position
+          let totalDistance = 0
+          if (stationaryStartPosRef.current) {
+            totalDistance = Math.sqrt(
+              Math.pow(currentPos.x - stationaryStartPosRef.current.x, 2) + 
+              Math.pow(currentPos.y - stationaryStartPosRef.current.y, 2)
+            )
+          }
+          
+          // Clear timer if moving (check both frame and total distance)
+          if (frameDistance > 1 || totalDistance > 3) {
+            isStationaryRef.current = false
+            stationaryStartPosRef.current = null
+            if (drawModeTimerRef.current) {
+              clearTimeout(drawModeTimerRef.current)
+              drawModeTimerRef.current = undefined
             }
-          }, LONG_PRESS_DURATION)
+          } else if (frameDistance <= 1 && !drawModeTimerRef.current && onDrawMode) {
+            // Start new timer if finger stopped
+            if (!stationaryStartPosRef.current) {
+              stationaryStartPosRef.current = currentPos
+            }
+            isStationaryRef.current = true
+            drawModeTimerRef.current = setTimeout(() => {
+              if (isInAdjustModeRef.current && onDrawMode && !isPinchingRef.current) {
+                onDrawMode()
+              }
+            }, LONG_PRESS_DURATION)
+          }
+        } else {
+          // First position in adjust mode - don't start timer immediately
+          lastTouchPositionRef.current = currentPos
+          isStationaryRef.current = false
+          stationaryStartPosRef.current = null
         }
       }
       
@@ -143,6 +170,8 @@ export function useTouch() {
       setHasMoved(false)
       isInAdjustModeRef.current = false
       lastTouchPositionRef.current = null
+      isStationaryRef.current = false
+      stationaryStartPosRef.current = null
     } else if (touches.length === 1 && isPinchingRef.current) {
       // Keep pinch state active if one finger is still down
       setLastTouchDistance(null)
@@ -205,6 +234,7 @@ export function useTouch() {
   return {
     isPinching: isPinchingRef.current,
     hasMoved,
+    isStationary: isStationaryRef.current,
     startTouch,
     moveTouch,
     endTouch,
