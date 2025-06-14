@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { Position } from '@/types/editor'
-import { LONG_PRESS_DURATION, CLICK_DISTANCE_THRESHOLD } from '@/constants/editor'
+import { LONG_PRESS_DURATION, CLICK_DISTANCE_THRESHOLD, ADJUST_MODE_DELAY, DRAW_MODE_DELAY } from '@/constants/editor'
 
 export function useTouch() {
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
@@ -47,7 +47,7 @@ export function useTouch() {
       setHasMoved(false)
       hasMovedRef.current = false
       
-      // Start adjust mode after 0.5s
+      // Start adjust mode after 0.2s
       adjustModeTimerRef.current = setTimeout(() => {
         if (!hasMovedRef.current && onAdjustMode && !isPinchingRef.current) {
           onAdjustMode()
@@ -56,7 +56,7 @@ export function useTouch() {
           isStationaryRef.current = false
           lastTouchPositionRef.current = { x: touch.clientX, y: touch.clientY }
         }
-      }, LONG_PRESS_DURATION)
+      }, ADJUST_MODE_DELAY)
       
       // Legacy long press for line selection - disabled when using loupe mode
       if (!onAdjustMode) {
@@ -133,7 +133,7 @@ export function useTouch() {
               if (isInAdjustModeRef.current && onDrawMode && !isPinchingRef.current) {
                 onDrawMode()
               }
-            }, LONG_PRESS_DURATION)
+            }, DRAW_MODE_DELAY)
           }
         } else {
           // First position in adjust mode - don't start timer immediately

@@ -86,7 +86,7 @@ export default function Loupe({
       const startAngle = -Math.PI / 2  // Start from top
       const endAngle = startAngle + (progress * Math.PI * 2)
       ctx.arc(LOUPE_RADIUS, LOUPE_RADIUS, LOUPE_RADIUS - 1, startAngle, endAngle)
-      ctx.strokeStyle = '#7CFC00'  // Lime green
+      ctx.strokeStyle = 'rgba(124, 252, 0, 0.3)'  // Lime green with 0.3 opacity
       ctx.lineWidth = 3
       ctx.stroke()
       
@@ -112,14 +112,23 @@ export default function Loupe({
   useEffect(() => {
     if (mode === 'adjust' && isStationary) {
       const startTime = Date.now()
-      const duration = 500 // 0.5 seconds
+      const delay = 500 // 0.5 seconds delay before starting
+      const animationDuration = 500 // 0.5 seconds for the animation
       
       const animate = () => {
         const elapsed = Date.now() - startTime
-        const progress = Math.min(elapsed / duration, 1)
-        setAnimationProgress(progress)
         
-        if (progress < 1) {
+        if (elapsed < delay) {
+          // Still in delay period
+          setAnimationProgress(0)
+        } else {
+          // Animation period
+          const animationElapsed = elapsed - delay
+          const progress = Math.min(animationElapsed / animationDuration, 1)
+          setAnimationProgress(progress)
+        }
+        
+        if (elapsed < delay + animationDuration) {
           animationFrameRef.current = requestAnimationFrame(animate)
         }
       }
