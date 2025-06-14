@@ -30,6 +30,8 @@ export default function Loupe({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [animationProgress, setAnimationProgress] = useState(0)
   const animationFrameRef = useRef<number>()
+  const [isFlashing, setIsFlashing] = useState(false)
+  const prevModeRef = useRef<DrawingMode>(mode)
 
   useEffect(() => {
     if (!visible || !sourceCanvas || !canvasRef.current) return
@@ -107,6 +109,18 @@ export default function Loupe({
       ctx.stroke()
     }
   }, [visible, position, mode, isStationary, sourceCanvas, lineThickness, scale, imagePosition, getCanvasCoordinates, animationProgress])
+
+  // Handle flash effect when entering draw mode
+  useEffect(() => {
+    if (mode === 'draw' && prevModeRef.current === 'adjust') {
+      setIsFlashing(true)
+      const timer = setTimeout(() => {
+        setIsFlashing(false)
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+    prevModeRef.current = mode
+  }, [mode])
 
   // Handle animation
   useEffect(() => {
@@ -186,17 +200,35 @@ export default function Loupe({
   const loupePosition = getLoupePosition()
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={LOUPE_RADIUS * 2}
-      height={LOUPE_RADIUS * 2}
+    <div
       className="absolute pointer-events-none z-20"
       style={{
         left: `${loupePosition.x}px`,
         top: `${loupePosition.y}px`,
-        borderRadius: '50%',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+        width: LOUPE_RADIUS * 2,
+        height: LOUPE_RADIUS * 2,
+        borderRadius: '50%'
       }}
-    />
+    >
+      <canvas
+        ref={canvasRef}
+        width={LOUPE_RADIUS * 2}
+        height={LOUPE_RADIUS * 2}
+        style={{
+          borderRadius: '50%',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+        }}
+      />
+      {isFlashing && (
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+            borderRadius: '50%',
+            animation: 'flash 100ms ease-out'
+          }}
+        />
+      )}
+    </div>
   )
 }

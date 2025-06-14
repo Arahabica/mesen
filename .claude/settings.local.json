@@ -11,7 +11,9 @@
       "Bash(npm run build:*)",
       "Bash(npm run typecheck:*)",
       "Bash(grep:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(rm:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": []
   }

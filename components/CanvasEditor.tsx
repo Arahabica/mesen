@@ -2,7 +2,6 @@ import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react
 import { X, RotateCcw, Download } from 'lucide-react'
 import { Line, LoupeState, DrawingMode } from '@/types/editor'
 import Loupe from './Loupe'
-import ModeTransitionFlash from './ModeTransitionFlash'
 
 interface CanvasEditorProps {
   image: string
@@ -55,7 +54,6 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [modeTransitionTrigger, setModeTransitionTrigger] = React.useState(0)
 
   useImperativeHandle(ref, () => ({
     getCanvas: () => canvasRef.current
@@ -100,11 +98,10 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   // Vibration feedback for mode transitions
   useEffect(() => {
     if (drawingMode === 'draw') {
-      // Longer vibration for draw mode
+      // Vibration for draw mode
       if ('vibrate' in navigator) {
         navigator.vibrate(30)
       }
-      setModeTransitionTrigger(prev => prev + 1)
     }
   }, [drawingMode])
 
@@ -126,8 +123,6 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
 
   return (
     <div className="relative w-screen h-dvh overflow-hidden bg-gray-900">
-      <ModeTransitionFlash trigger={modeTransitionTrigger} />
-      
       <button
         onClick={onClose}
         className="absolute top-4 right-4 w-12 h-12 bg-gray-700 text-gray-300 rounded-full flex items-center justify-center hover:bg-gray-600 transition-colors z-10"
