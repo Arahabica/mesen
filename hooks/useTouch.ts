@@ -11,6 +11,8 @@ export function useTouch() {
   const touchStartTimeRef = useRef<number>(0)
   const adjustModeTimerRef = useRef<NodeJS.Timeout>()
   const drawModeTimerRef = useRef<NodeJS.Timeout>()
+  const lastTouchPositionRef = useRef<Position | null>(null)
+  const isInAdjustModeRef = useRef(false)
 
   const getTouchDistance = (touch1: React.Touch, touch2: React.Touch) => {
     return Math.sqrt(
@@ -22,11 +24,15 @@ export function useTouch() {
   const hasMovedRef = useRef(false)
 
   const startTouch = useCallback((touches: React.TouchList, onLongPress: () => void, onAdjustMode?: () => void, onDrawMode?: () => void) => {
-    if (touches.length === 2) {
+    if (touches.length >= 2) {
       isPinchingRef.current = true
       const distance = getTouchDistance(touches[0], touches[1])
       setLastTouchDistance(distance)
-    } else if (touches.length === 1) {
+      // Clear any timers when starting pinch
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
+      if (adjustModeTimerRef.current) clearTimeout(adjustModeTimerRef.current)
+      if (drawModeTimerRef.current) clearTimeout(drawModeTimerRef.current)
+    } else if (touches.length === 1 && !isPinchingRef.current) {
       const touch = touches[0]
       touchStartTimeRef.current = Date.now()
       setInitialTouchPos({ x: touch.clientX, y: touch.clientY })
@@ -35,22 +41,16 @@ export function useTouch() {
       
       // Start adjust mode after 0.5s
       adjustModeTimerRef.current = setTimeout(() => {
-        if (!hasMovedRef.current && onAdjustMode) {
+        if (!hasMovedRef.current && onAdjustMode && !isPinchingRef.current) {
           onAdjustMode()
-          
-          // Start draw mode after another 0.5s
-          drawModeTimerRef.current = setTimeout(() => {
-            if (!hasMovedRef.current && onDrawMode) {
-              onDrawMode()
-            }
-          }, LONG_PRESS_DURATION)
+          isInAdjustModeRef.current = true
         }
       }, LONG_PRESS_DURATION)
       
       // Legacy long press for line selection - disabled when using loupe mode
       if (!onAdjustMode) {
         longPressTimerRef.current = setTimeout(() => {
-          if (!hasMovedRef.current) {
+          if (!hasMovedRef.current && !isPinchingRef.current) {
             onLongPress()
           }
         }, LONG_PRESS_DURATION)
@@ -58,51 +58,92 @@ export function useTouch() {
     }
   }, [])
 
-  const moveTouch = useCallback((touches: React.TouchList) => {
-    if (touches.length === 1 && initialTouchPos && !hasMoved) {
+  const moveTouch = useCallback((touches: React.TouchList, onDrawMode?: () => void) => {
+    // Don't process if pinching
+    if (isPinchingRef.current || touches.length >= 2) return
+    
+    if (touches.length === 1) {
       const touch = touches[0]
-      const distance = Math.sqrt(
-        Math.pow(touch.clientX - initialTouchPos.x, 2) + 
-        Math.pow(touch.clientY - initialTouchPos.y, 2)
-      )
-      if (distance > CLICK_DISTANCE_THRESHOLD) {
-        setHasMoved(true)
-        hasMovedRef.current = true
-        if (longPressTimerRef.current) {
-          clearTimeout(longPressTimerRef.current)
-        }
-        if (adjustModeTimerRef.current) {
-          clearTimeout(adjustModeTimerRef.current)
-        }
-        if (drawModeTimerRef.current) {
-          clearTimeout(drawModeTimerRef.current)
+      const currentPos = { x: touch.clientX, y: touch.clientY }
+      
+      // Check if moved from initial position
+      if (initialTouchPos && !hasMoved) {
+        const distance = Math.sqrt(
+          Math.pow(touch.clientX - initialTouchPos.x, 2) + 
+          Math.pow(touch.clientY - initialTouchPos.y, 2)
+        )
+        if (distance > CLICK_DISTANCE_THRESHOLD) {
+          setHasMoved(true)
+          hasMovedRef.current = true
+          if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current)
+          }
+          if (adjustModeTimerRef.current) {
+            clearTimeout(adjustModeTimerRef.current)
+          }
+          if (drawModeTimerRef.current) {
+            clearTimeout(drawModeTimerRef.current)
+          }
         }
       }
+      
+      // In adjust mode, check if finger has stopped moving
+      if (isInAdjustModeRef.current && lastTouchPositionRef.current) {
+        const moveDistance = Math.sqrt(
+          Math.pow(currentPos.x - lastTouchPositionRef.current.x, 2) + 
+          Math.pow(currentPos.y - lastTouchPositionRef.current.y, 2)
+        )
+        
+        // Clear existing timer if finger is moving
+        if (moveDistance > 2 && drawModeTimerRef.current) {
+          clearTimeout(drawModeTimerRef.current)
+          drawModeTimerRef.current = undefined
+        }
+        
+        // Start new timer if finger stopped
+        if (moveDistance <= 2 && !drawModeTimerRef.current && onDrawMode) {
+          drawModeTimerRef.current = setTimeout(() => {
+            if (isInAdjustModeRef.current && onDrawMode && !isPinchingRef.current) {
+              onDrawMode()
+            }
+          }, LONG_PRESS_DURATION)
+        }
+      }
+      
+      lastTouchPositionRef.current = currentPos
     }
   }, [initialTouchPos, hasMoved])
 
   const endTouch = useCallback((touches: React.TouchList) => {
+    // Only reset pinch state when ALL fingers are lifted
     if (touches.length === 0) {
       isPinchingRef.current = false
       setLastTouchDistance(null)
+      
+      // Clear all timers
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current)
+      }
+      if (adjustModeTimerRef.current) {
+        clearTimeout(adjustModeTimerRef.current)
+      }
+      if (drawModeTimerRef.current) {
+        clearTimeout(drawModeTimerRef.current)
+      }
+      
+      // Reset all states
+      setInitialTouchPos(null)
+      setHasMoved(false)
+      isInAdjustModeRef.current = false
+      lastTouchPositionRef.current = null
+    } else if (touches.length === 1 && isPinchingRef.current) {
+      // Keep pinch state active if one finger is still down
+      setLastTouchDistance(null)
     }
-    
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current)
-    }
-    if (adjustModeTimerRef.current) {
-      clearTimeout(adjustModeTimerRef.current)
-    }
-    if (drawModeTimerRef.current) {
-      clearTimeout(drawModeTimerRef.current)
-    }
-    
-    setInitialTouchPos(null)
-    setHasMoved(false)
   }, [])
 
   const getPinchScale = useCallback((touches: React.TouchList) => {
-    if (touches.length === 2 && lastTouchDistance !== null) {
+    if (touches.length === 2 && lastTouchDistance !== null && isPinchingRef.current) {
       const currentDistance = getTouchDistance(touches[0], touches[1])
       const scale = currentDistance / lastTouchDistance
       setLastTouchDistance(currentDistance)

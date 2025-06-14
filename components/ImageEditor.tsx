@@ -112,11 +112,16 @@ export default function ImageEditor() {
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
     
-    if (e.touches.length !== 1) {
+    // Clear any existing modes when starting new touch
+    drawing.resetMode()
+    
+    // Multi-touch (2+ fingers) - zoom mode only
+    if (e.touches.length >= 2) {
       touch.startTouch(e.touches, () => {})
       return
     }
     
+    // Single touch handling
     const touchPoint = e.touches[0]
     const touchCoords = {
       x: touchPoint.clientX,
@@ -142,39 +147,49 @@ export default function ImageEditor() {
       drawing.startDrawing(coords)
     }
     
-    if (e.touches.length === 1) {
-      const touchCoords = zoomPan.getCanvasCoordinates(e.touches[0].clientX, e.touches[0].clientY)
-      const touchedLineIndex = drawing.findLineAtPoint(touchCoords)
-      
-      if (touchedLineIndex !== -1) {
-        // If touching a line, select it
-        drawing.selectLine(touchedLineIndex, touchCoords)
-        touch.startTouch(e.touches, onLongPress)
-      } else {
-        // If not touching a line, start loupe mode or drag
-        touch.startTouch(e.touches, onLongPress, onAdjustMode, onDrawMode)
-        // Start dragging immediately for smooth panning
-        zoomPan.startDragging(e.touches[0].clientX, e.touches[0].clientY)
-      }
-    } else {
-      // Multi-touch for pinch zoom
+    const canvasCoords = zoomPan.getCanvasCoordinates(touchPoint.clientX, touchPoint.clientY)
+    const touchedLineIndex = drawing.findLineAtPoint(canvasCoords)
+    
+    if (touchedLineIndex !== -1) {
+      // If touching a line, select it
+      drawing.selectLine(touchedLineIndex, canvasCoords)
       touch.startTouch(e.touches, onLongPress)
+    } else {
+      // If not touching a line, start loupe mode or drag
+      touch.startTouch(e.touches, onLongPress, onAdjustMode, onDrawMode)
+      // Start dragging immediately for smooth panning
+      zoomPan.startDragging(touchPoint.clientX, touchPoint.clientY)
     }
   }, [touch, drawing, zoomPan])
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     // e.preventDefault()
-    touch.moveTouch(e.touches)
     
+    // Handle pinch zoom first - this takes priority
     const pinchScale = touch.getPinchScale(e.touches)
     if (pinchScale) {
       const center = touch.getPinchCenter(e.touches)
       if (center) {
         zoomPan.handlePinchZoom(zoomPan.scale * pinchScale, center.x, center.y)
       }
-    } else if (e.touches.length === 1 && !touch.isPinching) {
+      // Don't process any other touch logic during pinch
+      return
+    }
+    
+    // Only process single touch if not pinching
+    if (e.touches.length === 1 && !touch.isPinching) {
       const touchPos = e.touches[0]
       const coords = zoomPan.getCanvasCoordinates(touchPos.clientX, touchPos.clientY)
+      
+      // Handle mode transition in adjust mode
+      const onDrawModeTransition = () => {
+        if (drawing.drawingMode === 'adjust') {
+          drawing.startDrawMode()
+          drawing.startDrawing(coords)
+        }
+      }
+      
+      touch.moveTouch(e.touches, onDrawModeTransition)
       
       // Update loupe position in adjust/draw modes (use screen coordinates)
       if (drawing.drawingMode === 'adjust' || drawing.drawingMode === 'draw') {
