@@ -186,16 +186,28 @@ export default function Loupe({
           loupeX = position.x - loupeSize - offset
           loupeY = position.y - loupeSize - offset
           break
+        case 'top-left-top':
+          loupeX = position.x - loupeSize / 2 - offset
+          loupeY = position.y - loupeSize - offset
+          break
+        case 'top':
+          loupeX = position.x - loupeSize / 2
+          loupeY = position.y - loupeSize - offset
+          break
+        case 'top-top-right':
+          loupeX = position.x + offset - loupeSize / 2
+          loupeY = position.y - loupeSize - offset
+          break
         case 'top-right':
           loupeX = position.x + offset
           loupeY = position.y - loupeSize - offset
           break
-        case 'bottom-left':
-          loupeX = position.x - loupeSize - offset
-          loupeY = position.y + offset
-          break
         case 'bottom-right':
           loupeX = position.x + offset
+          loupeY = position.y + offset
+          break
+        case 'bottom-left':
+          loupeX = position.x - loupeSize - offset
           loupeY = position.y + offset
           break
       }

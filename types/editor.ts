@@ -16,7 +16,7 @@ export interface ImageSize {
 
 export type DrawingMode = 'move' | 'adjust' | 'draw'
 
-export type LoupeRelativePosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+export type LoupeRelativePosition = 'top-left' | 'top-left-top' | 'top' | 'top-top-right' | 'top-right' | 'bottom-right' | 'bottom-left'
 
 export interface LoupeState {
   visible: boolean

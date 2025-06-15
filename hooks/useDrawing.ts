@@ -146,7 +146,7 @@ export function useDrawing(lineThickness: number) {
   const startAdjustMode = useCallback((coords: Position) => {
     setDrawingMode('adjust')
     
-    // Determine relative position based on initial coordinates
+    // Determine relative position based on priority order
     const offset = 20
     const loupeSize = 100 // LOUPE_RADIUS * 2
     const viewportWidth = window.innerWidth
@@ -154,21 +154,35 @@ export function useDrawing(lineThickness: number) {
     
     let relativePos: LoupeRelativePosition = 'top-left'
     
-    // Check if loupe would fit in top-left
-    if (coords.x - loupeSize - offset >= 0 && coords.y - loupeSize - offset >= 0) {
-      relativePos = 'top-left'
+    // Check if each position would fit in viewport
+    const checkPositionFits = (pos: LoupeRelativePosition): boolean => {
+      switch (pos) {
+        case 'top-left':
+          return coords.x - loupeSize - offset >= 0 && coords.y - loupeSize - offset >= 0
+        case 'top-left-top':
+          return coords.x - loupeSize / 2 - offset >= 0 && coords.y - loupeSize - offset >= 0
+        case 'top':
+          return coords.y - loupeSize - offset >= 0
+        case 'top-top-right':
+          return coords.x + loupeSize / 2 + offset <= viewportWidth && coords.y - loupeSize - offset >= 0
+        case 'top-right':
+          return coords.x + offset + loupeSize <= viewportWidth && coords.y - loupeSize - offset >= 0
+        case 'bottom-right':
+          return coords.x + offset + loupeSize <= viewportWidth && coords.y + offset + loupeSize <= viewportHeight
+        case 'bottom-left':
+          return coords.x - loupeSize - offset >= 0 && coords.y + offset + loupeSize <= viewportHeight
+      }
     }
-    // Check if loupe would fit in top-right
-    else if (coords.x + offset + loupeSize <= viewportWidth && coords.y - loupeSize - offset >= 0) {
-      relativePos = 'top-right'
-    }
-    // Check if loupe would fit in bottom-left
-    else if (coords.x - loupeSize - offset >= 0 && coords.y + offset + loupeSize <= viewportHeight) {
-      relativePos = 'bottom-left'
-    }
-    // Default to bottom-right
-    else {
-      relativePos = 'bottom-right'
+    
+    // Priority order: top-left, top-left-top, top, top-top-right, top-right, bottom-right, bottom-left
+    const positions: LoupeRelativePosition[] = ['top-left', 'top-left-top', 'top', 'top-top-right', 'top-right', 'bottom-right', 'bottom-left']
+    
+    // Find the first position that fits
+    for (const pos of positions) {
+      if (checkPositionFits(pos)) {
+        relativePos = pos
+        break
+      }
     }
     
     setLoupeState({
