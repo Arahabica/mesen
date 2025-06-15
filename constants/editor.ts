@@ -1,4 +1,33 @@
-export const THICKNESS_OPTIONS = [2, 5, 10, 20, 40, 60]
+export const THICKNESS_RATIOS = [0.0025, 0.005, 0.01, 0.02, 0.05, 0.1]
+export const DEFAULT_THICKNESS_RATIO = 0.01
+
+export function getThicknessOptions(imageWidth: number, imageHeight: number): number[] {
+  const maxDimension = Math.max(imageWidth, imageHeight)
+  return THICKNESS_RATIOS.map(ratio => Math.round(ratio * maxDimension))
+}
+
+export function getDefaultThickness(imageWidth: number, imageHeight: number): number {
+  const maxDimension = Math.max(imageWidth, imageHeight)
+  return Math.round(DEFAULT_THICKNESS_RATIO * maxDimension)
+}
+
+export function getDynamicThickness(
+  imageWidth: number, 
+  imageHeight: number, 
+  targetThickness: number
+): number {
+  const thicknessOptions = getThicknessOptions(imageWidth, imageHeight)
+  
+  // Find the largest thickness option that is <= targetThickness
+  for (let i = thicknessOptions.length - 1; i >= 0; i--) {
+    if (thicknessOptions[i] <= targetThickness) {
+      return thicknessOptions[i]
+    }
+  }
+  
+  // If all options are larger than target, use the smallest
+  return thicknessOptions[0]
+}
 
 export const LONG_PRESS_DURATION = 500
 export const ADJUST_MODE_DELAY = 200  // 移動モードから調整モードへの遷移時間

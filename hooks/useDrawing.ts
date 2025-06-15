@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react'
 import { Line, Position, DrawingMode, LoupeState } from '@/types/editor'
-import { THICKNESS_OPTIONS, CLICK_DISTANCE_THRESHOLD } from '@/constants/editor'
+import { getThicknessOptions, CLICK_DISTANCE_THRESHOLD } from '@/constants/editor'
 import { findBestLoupePosition } from '@/utils/loupePosition'
 
-export function useDrawing(lineThickness: number) {
+export function useDrawing(lineThickness: number, imageWidth: number, imageHeight: number) {
   const [lines, setLines] = useState<Line[]>([])
   const [currentLine, setCurrentLine] = useState<Line | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
@@ -58,24 +58,24 @@ export function useDrawing(lineThickness: number) {
     })
   }, [lines])
 
-  const startDrawing = useCallback((coords: Position) => {
+  const startDrawing = useCallback((coords: Position, customThickness?: number) => {
     setIsDrawing(true)
     setDrawStartPoint(coords)
     setCurrentLine({
       start: coords,
       end: coords,
-      thickness: lineThickness
+      thickness: customThickness ?? lineThickness
     })
   }, [lineThickness])
 
   const draw = useCallback((coords: Position) => {
-    if (!isDrawing || !drawStartPoint) return
+    if (!isDrawing || !drawStartPoint || !currentLine) return
     setCurrentLine({
       start: drawStartPoint,
       end: coords,
-      thickness: lineThickness
+      thickness: currentLine.thickness  // Use the thickness from currentLine
     })
-  }, [isDrawing, drawStartPoint, lineThickness])
+  }, [isDrawing, drawStartPoint, currentLine])
 
   const stopDrawing = useCallback(() => {
     if (isDrawing && currentLine && drawStartPoint) {
@@ -123,11 +123,12 @@ export function useDrawing(lineThickness: number) {
   const changeLineThickness = useCallback((index: number) => {
     const newLines = [...lines]
     const currentThickness = newLines[index].thickness
-    const currentIndex = THICKNESS_OPTIONS.indexOf(currentThickness)
-    const nextIndex = (currentIndex + 1) % THICKNESS_OPTIONS.length
-    newLines[index].thickness = THICKNESS_OPTIONS[nextIndex]
+    const thicknessOptions = getThicknessOptions(imageWidth, imageHeight)
+    const currentIndex = thicknessOptions.indexOf(currentThickness)
+    const nextIndex = (currentIndex + 1) % thicknessOptions.length
+    newLines[index].thickness = thicknessOptions[nextIndex]
     setLines(newLines)
-  }, [lines])
+  }, [lines, imageWidth, imageHeight])
 
   const stopDraggingLine = useCallback(() => {
     setIsDraggingLine(false)
