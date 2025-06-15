@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Position, DrawingMode, LoupeRelativePosition } from '@/types/editor'
+import { calculateLoupeTopLeftPosition, LOUPE_RADIUS } from '@/utils/loupePosition'
 
 interface LoupeProps {
   visible: boolean
@@ -15,7 +16,6 @@ interface LoupeProps {
   relativePosition?: LoupeRelativePosition
 }
 
-const LOUPE_RADIUS = 50
 const MAGNIFICATION_FACTOR = 1.5
 
 export default function Loupe({
@@ -171,88 +171,31 @@ export default function Loupe({
 
   // Calculate loupe position
   const getLoupePosition = () => {
-    const distanceFromFinger = 30 // Fixed distance from finger to loupe edge
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
     const loupeSize = LOUPE_RADIUS * 2
 
-    let loupeX: number
-    let loupeY: number
+    let loupePosition: Position
 
-    // If we have a stored relative position, use it
-    if (relativePosition) {
-      // Calculate total distance from finger center to loupe center
-      const distanceToCenter = distanceFromFinger + LOUPE_RADIUS
-      
-      switch (relativePosition) {
-        case 'top-left':
-          // 225 degrees (down-left)
-          loupeX = position.x + distanceToCenter * Math.cos(225 * Math.PI / 180) - LOUPE_RADIUS
-          loupeY = position.y + distanceToCenter * Math.sin(225 * Math.PI / 180) - LOUPE_RADIUS
-          break
-        case 'top-left-top':
-          // 247.5 degrees (between down-left and down)
-          loupeX = position.x + distanceToCenter * Math.cos(247.5 * Math.PI / 180) - LOUPE_RADIUS
-          loupeY = position.y + distanceToCenter * Math.sin(247.5 * Math.PI / 180) - LOUPE_RADIUS
-          break
-        case 'top':
-          // 270 degrees (straight up)
-          loupeX = position.x + distanceToCenter * Math.cos(270 * Math.PI / 180) - LOUPE_RADIUS
-          loupeY = position.y + distanceToCenter * Math.sin(270 * Math.PI / 180) - LOUPE_RADIUS
-          break
-        case 'top-top-right':
-          // 292.5 degrees (between up and up-right)
-          loupeX = position.x + distanceToCenter * Math.cos(292.5 * Math.PI / 180) - LOUPE_RADIUS
-          loupeY = position.y + distanceToCenter * Math.sin(292.5 * Math.PI / 180) - LOUPE_RADIUS
-          break
-        case 'top-right':
-          // 315 degrees (up-right)
-          loupeX = position.x + distanceToCenter * Math.cos(315 * Math.PI / 180) - LOUPE_RADIUS
-          loupeY = position.y + distanceToCenter * Math.sin(315 * Math.PI / 180) - LOUPE_RADIUS
-          break
-        case 'bottom-right':
-          // 45 degrees (down-right)
-          loupeX = position.x + distanceToCenter * Math.cos(45 * Math.PI / 180) - LOUPE_RADIUS
-          loupeY = position.y + distanceToCenter * Math.sin(45 * Math.PI / 180) - LOUPE_RADIUS
-          break
-        case 'bottom-left':
-          // 135 degrees (down-left)
-          loupeX = position.x + distanceToCenter * Math.cos(135 * Math.PI / 180) - LOUPE_RADIUS
-          loupeY = position.y + distanceToCenter * Math.sin(135 * Math.PI / 180) - LOUPE_RADIUS
-          break
-      }
-    } else {
-      // Initial positioning logic (prefer top-left)
-      const distanceToCenter = distanceFromFinger + LOUPE_RADIUS
-      loupeX = position.x + distanceToCenter * Math.cos(225 * Math.PI / 180) - LOUPE_RADIUS
-      loupeY = position.y + distanceToCenter * Math.sin(225 * Math.PI / 180) - LOUPE_RADIUS
-
-      // If not enough space on left, try right
-      if (loupeX < 0) {
-        loupeX = position.x + distanceToCenter * Math.cos(315 * Math.PI / 180) - LOUPE_RADIUS
-      }
-
-      // If not enough space on top, try bottom
-      if (loupeY < 0) {
-        loupeY = position.y + distanceToCenter * Math.sin(45 * Math.PI / 180) - LOUPE_RADIUS
-      }
-    }
+    // Use the stored relative position or default to top-left
+    const effectiveRelativePosition = relativePosition || 'top-left'
+    loupePosition = calculateLoupeTopLeftPosition(position, effectiveRelativePosition)
 
     // Ensure loupe stays within viewport
-    if (loupeX + loupeSize > viewportWidth) {
-      loupeX = viewportWidth - loupeSize - 10
+    if (loupePosition.x + loupeSize > viewportWidth) {
+      loupePosition.x = viewportWidth - loupeSize - 10
     }
-    if (loupeY + loupeSize > viewportHeight) {
-      loupeY = viewportHeight - loupeSize - 10
+    if (loupePosition.y + loupeSize > viewportHeight) {
+      loupePosition.y = viewportHeight - loupeSize - 10
     }
-    if (loupeX < 10) {
-      loupeX = 10
+    if (loupePosition.x < 10) {
+      loupePosition.x = 10
     }
-    if (loupeY < 10) {
-      loupeY = 10
+    if (loupePosition.y < 10) {
+      loupePosition.y = 10
     }
 
-    return { x: loupeX, y: loupeY }
+    return loupePosition
   }
 
   const loupePosition = getLoupePosition()

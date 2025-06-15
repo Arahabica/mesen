@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
-import { Line, Position, DrawingMode, LoupeState, LoupeRelativePosition } from '@/types/editor'
+import { Line, Position, DrawingMode, LoupeState } from '@/types/editor'
 import { THICKNESS_OPTIONS, CLICK_DISTANCE_THRESHOLD } from '@/constants/editor'
+import { findBestLoupePosition } from '@/utils/loupePosition'
 
 export function useDrawing(lineThickness: number) {
   const [lines, setLines] = useState<Line[]>([])
@@ -146,70 +147,12 @@ export function useDrawing(lineThickness: number) {
   const startAdjustMode = useCallback((coords: Position) => {
     setDrawingMode('adjust')
     
-    // Determine relative position based on priority order
-    const distanceFromFinger = 30 // Fixed distance from finger to loupe edge
-    const loupeRadius = 50 // LOUPE_RADIUS
-    const loupeSize = loupeRadius * 2
-    const distanceToCenter = distanceFromFinger + loupeRadius
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-    
-    let relativePos: LoupeRelativePosition = 'top-left'
-    
-    // Check if each position would fit in viewport
-    const checkPositionFits = (pos: LoupeRelativePosition): boolean => {
-      let loupeCenterX: number
-      let loupeCenterY: number
-      
-      switch (pos) {
-        case 'top-left':
-          // 225 degrees (down-left)
-          loupeCenterX = coords.x + distanceToCenter * Math.cos(225 * Math.PI / 180)
-          loupeCenterY = coords.y + distanceToCenter * Math.sin(225 * Math.PI / 180)
-          return loupeCenterX - loupeRadius >= 0 && loupeCenterY - loupeRadius >= 0
-        case 'top-left-top':
-          // 247.5 degrees (between down-left and down)
-          loupeCenterX = coords.x + distanceToCenter * Math.cos(247.5 * Math.PI / 180)
-          loupeCenterY = coords.y + distanceToCenter * Math.sin(247.5 * Math.PI / 180)
-          return loupeCenterX - loupeRadius >= 0 && loupeCenterY - loupeRadius >= 0
-        case 'top':
-          // 270 degrees (straight up)
-          loupeCenterX = coords.x + distanceToCenter * Math.cos(270 * Math.PI / 180)
-          loupeCenterY = coords.y + distanceToCenter * Math.sin(270 * Math.PI / 180)
-          return loupeCenterX - loupeRadius >= 0 && loupeCenterX + loupeRadius <= viewportWidth && loupeCenterY - loupeRadius >= 0
-        case 'top-top-right':
-          // 292.5 degrees (between up and up-right)
-          loupeCenterX = coords.x + distanceToCenter * Math.cos(292.5 * Math.PI / 180)
-          loupeCenterY = coords.y + distanceToCenter * Math.sin(292.5 * Math.PI / 180)
-          return loupeCenterX + loupeRadius <= viewportWidth && loupeCenterY - loupeRadius >= 0
-        case 'top-right':
-          // 315 degrees (up-right)
-          loupeCenterX = coords.x + distanceToCenter * Math.cos(315 * Math.PI / 180)
-          loupeCenterY = coords.y + distanceToCenter * Math.sin(315 * Math.PI / 180)
-          return loupeCenterX + loupeRadius <= viewportWidth && loupeCenterY - loupeRadius >= 0
-        case 'bottom-right':
-          // 45 degrees (down-right)
-          loupeCenterX = coords.x + distanceToCenter * Math.cos(45 * Math.PI / 180)
-          loupeCenterY = coords.y + distanceToCenter * Math.sin(45 * Math.PI / 180)
-          return loupeCenterX + loupeRadius <= viewportWidth && loupeCenterY + loupeRadius <= viewportHeight
-        case 'bottom-left':
-          // 135 degrees (down-left)
-          loupeCenterX = coords.x + distanceToCenter * Math.cos(135 * Math.PI / 180)
-          loupeCenterY = coords.y + distanceToCenter * Math.sin(135 * Math.PI / 180)
-          return loupeCenterX - loupeRadius >= 0 && loupeCenterY + loupeRadius <= viewportHeight
-      }
-    }
-    
-    // Priority order: top-left, top-left-top, top, top-top-right, top-right, bottom-right, bottom-left
-    const positions: LoupeRelativePosition[] = ['top-left', 'top-left-top', 'top', 'top-top-right', 'top-right', 'bottom-right', 'bottom-left']
-    
-    // Find the first position that fits
-    for (const pos of positions) {
-      if (checkPositionFits(pos)) {
-        relativePos = pos
-        break
-      }
-    }
+    // Find the best loupe position
+    const relativePos = findBestLoupePosition(
+      coords,
+      window.innerWidth,
+      window.innerHeight
+    )
     
     setLoupeState({
       visible: true,
