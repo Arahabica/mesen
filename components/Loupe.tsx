@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Position, DrawingMode } from '@/types/editor'
+import { Position, DrawingMode, LoupeRelativePosition } from '@/types/editor'
 
 interface LoupeProps {
   visible: boolean
@@ -11,6 +11,8 @@ interface LoupeProps {
   scale: number
   imagePosition: Position
   getCanvasCoordinates: (screenX: number, screenY: number) => Position
+  initialPosition?: Position  // Initial position when entering adjust mode
+  relativePosition?: LoupeRelativePosition
 }
 
 const LOUPE_RADIUS = 50
@@ -25,7 +27,9 @@ export default function Loupe({
   lineThickness,
   scale,
   imagePosition,
-  getCanvasCoordinates
+  getCanvasCoordinates,
+  initialPosition,
+  relativePosition
 }: LoupeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [animationProgress, setAnimationProgress] = useState(0)
@@ -165,25 +169,50 @@ export default function Loupe({
 
   if (!visible) return null
 
-  // Calculate loupe position (prefer top-left, then alternatives)
+  // Calculate loupe position
   const getLoupePosition = () => {
     const offset = 20
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
     const loupeSize = LOUPE_RADIUS * 2
 
-    // Try top-left
-    let loupeX = position.x - loupeSize - offset
-    let loupeY = position.y - loupeSize - offset
+    let loupeX: number
+    let loupeY: number
 
-    // If not enough space on left, try right
-    if (loupeX < 0) {
-      loupeX = position.x + offset
-    }
+    // If we have a stored relative position, use it
+    if (relativePosition) {
+      switch (relativePosition) {
+        case 'top-left':
+          loupeX = position.x - loupeSize - offset
+          loupeY = position.y - loupeSize - offset
+          break
+        case 'top-right':
+          loupeX = position.x + offset
+          loupeY = position.y - loupeSize - offset
+          break
+        case 'bottom-left':
+          loupeX = position.x - loupeSize - offset
+          loupeY = position.y + offset
+          break
+        case 'bottom-right':
+          loupeX = position.x + offset
+          loupeY = position.y + offset
+          break
+      }
+    } else {
+      // Initial positioning logic (prefer top-left)
+      loupeX = position.x - loupeSize - offset
+      loupeY = position.y - loupeSize - offset
 
-    // If not enough space on top, try bottom
-    if (loupeY < 0) {
-      loupeY = position.y + offset
+      // If not enough space on left, try right
+      if (loupeX < 0) {
+        loupeX = position.x + offset
+      }
+
+      // If not enough space on top, try bottom
+      if (loupeY < 0) {
+        loupeY = position.y + offset
+      }
     }
 
     // Ensure loupe stays within viewport
@@ -192,6 +221,12 @@ export default function Loupe({
     }
     if (loupeY + loupeSize > viewportHeight) {
       loupeY = viewportHeight - loupeSize - 10
+    }
+    if (loupeX < 10) {
+      loupeX = 10
+    }
+    if (loupeY < 10) {
+      loupeY = 10
     }
 
     return { x: loupeX, y: loupeY }

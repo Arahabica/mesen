@@ -180,6 +180,8 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           scale={scale}
           imagePosition={position}
           getCanvasCoordinates={getCanvasCoordinates}
+          initialPosition={loupeState.initialPosition}
+          relativePosition={loupeState.relativePosition}
         />
       </div>
     </div>

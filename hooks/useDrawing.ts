@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Line, Position, DrawingMode, LoupeState } from '@/types/editor'
+import { Line, Position, DrawingMode, LoupeState, LoupeRelativePosition } from '@/types/editor'
 import { THICKNESS_OPTIONS, CLICK_DISTANCE_THRESHOLD } from '@/constants/editor'
 
 export function useDrawing(lineThickness: number) {
@@ -145,11 +145,39 @@ export function useDrawing(lineThickness: number) {
 
   const startAdjustMode = useCallback((coords: Position) => {
     setDrawingMode('adjust')
+    
+    // Determine relative position based on initial coordinates
+    const offset = 20
+    const loupeSize = 100 // LOUPE_RADIUS * 2
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    
+    let relativePos: LoupeRelativePosition = 'top-left'
+    
+    // Check if loupe would fit in top-left
+    if (coords.x - loupeSize - offset >= 0 && coords.y - loupeSize - offset >= 0) {
+      relativePos = 'top-left'
+    }
+    // Check if loupe would fit in top-right
+    else if (coords.x + offset + loupeSize <= viewportWidth && coords.y - loupeSize - offset >= 0) {
+      relativePos = 'top-right'
+    }
+    // Check if loupe would fit in bottom-left
+    else if (coords.x - loupeSize - offset >= 0 && coords.y + offset + loupeSize <= viewportHeight) {
+      relativePos = 'bottom-left'
+    }
+    // Default to bottom-right
+    else {
+      relativePos = 'bottom-right'
+    }
+    
     setLoupeState({
       visible: true,
       position: coords,
       mode: 'adjust',
-      isStationary: false  // Start with non-stationary
+      isStationary: false,  // Start with non-stationary
+      initialPosition: coords,  // Store the initial position
+      relativePosition: relativePos  // Store the relative position
     })
   }, [])
 
@@ -176,7 +204,8 @@ export function useDrawing(lineThickness: number) {
     setLoupeState({
       visible: false,
       position: { x: 0, y: 0 },
-      mode: 'move'
+      mode: 'move',
+      initialPosition: undefined
     })
   }, [])
 
