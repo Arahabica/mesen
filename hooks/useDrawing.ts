@@ -147,8 +147,10 @@ export function useDrawing(lineThickness: number) {
     setDrawingMode('adjust')
     
     // Determine relative position based on priority order
-    const offset = 20
-    const loupeSize = 100 // LOUPE_RADIUS * 2
+    const distanceFromFinger = 30 // Fixed distance from finger to loupe edge
+    const loupeRadius = 50 // LOUPE_RADIUS
+    const loupeSize = loupeRadius * 2
+    const distanceToCenter = distanceFromFinger + loupeRadius
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
     
@@ -156,21 +158,45 @@ export function useDrawing(lineThickness: number) {
     
     // Check if each position would fit in viewport
     const checkPositionFits = (pos: LoupeRelativePosition): boolean => {
+      let loupeCenterX: number
+      let loupeCenterY: number
+      
       switch (pos) {
         case 'top-left':
-          return coords.x - loupeSize - offset >= 0 && coords.y - loupeSize - offset >= 0
+          // 225 degrees (down-left)
+          loupeCenterX = coords.x + distanceToCenter * Math.cos(225 * Math.PI / 180)
+          loupeCenterY = coords.y + distanceToCenter * Math.sin(225 * Math.PI / 180)
+          return loupeCenterX - loupeRadius >= 0 && loupeCenterY - loupeRadius >= 0
         case 'top-left-top':
-          return coords.x - loupeSize / 2 - offset >= 0 && coords.y - loupeSize - offset >= 0
+          // 202.5 degrees (between down-left and down)
+          loupeCenterX = coords.x + distanceToCenter * Math.cos(202.5 * Math.PI / 180)
+          loupeCenterY = coords.y + distanceToCenter * Math.sin(202.5 * Math.PI / 180)
+          return loupeCenterX - loupeRadius >= 0 && loupeCenterY - loupeRadius >= 0
         case 'top':
-          return coords.y - loupeSize - offset >= 0
+          // 270 degrees (straight up)
+          loupeCenterX = coords.x + distanceToCenter * Math.cos(270 * Math.PI / 180)
+          loupeCenterY = coords.y + distanceToCenter * Math.sin(270 * Math.PI / 180)
+          return loupeCenterX - loupeRadius >= 0 && loupeCenterX + loupeRadius <= viewportWidth && loupeCenterY - loupeRadius >= 0
         case 'top-top-right':
-          return coords.x + loupeSize / 2 + offset <= viewportWidth && coords.y - loupeSize - offset >= 0
+          // 337.5 degrees (between up and up-right)
+          loupeCenterX = coords.x + distanceToCenter * Math.cos(337.5 * Math.PI / 180)
+          loupeCenterY = coords.y + distanceToCenter * Math.sin(337.5 * Math.PI / 180)
+          return loupeCenterX + loupeRadius <= viewportWidth && loupeCenterY - loupeRadius >= 0
         case 'top-right':
-          return coords.x + offset + loupeSize <= viewportWidth && coords.y - loupeSize - offset >= 0
+          // 315 degrees (up-right)
+          loupeCenterX = coords.x + distanceToCenter * Math.cos(315 * Math.PI / 180)
+          loupeCenterY = coords.y + distanceToCenter * Math.sin(315 * Math.PI / 180)
+          return loupeCenterX + loupeRadius <= viewportWidth && loupeCenterY - loupeRadius >= 0
         case 'bottom-right':
-          return coords.x + offset + loupeSize <= viewportWidth && coords.y + offset + loupeSize <= viewportHeight
+          // 45 degrees (down-right)
+          loupeCenterX = coords.x + distanceToCenter * Math.cos(45 * Math.PI / 180)
+          loupeCenterY = coords.y + distanceToCenter * Math.sin(45 * Math.PI / 180)
+          return loupeCenterX + loupeRadius <= viewportWidth && loupeCenterY + loupeRadius <= viewportHeight
         case 'bottom-left':
-          return coords.x - loupeSize - offset >= 0 && coords.y + offset + loupeSize <= viewportHeight
+          // 135 degrees (down-left)
+          loupeCenterX = coords.x + distanceToCenter * Math.cos(135 * Math.PI / 180)
+          loupeCenterY = coords.y + distanceToCenter * Math.sin(135 * Math.PI / 180)
+          return loupeCenterX - loupeRadius >= 0 && loupeCenterY + loupeRadius <= viewportHeight
       }
     }
     

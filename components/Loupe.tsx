@@ -171,7 +171,7 @@ export default function Loupe({
 
   // Calculate loupe position
   const getLoupePosition = () => {
-    const offset = 20
+    const distanceFromFinger = 30 // Fixed distance from finger to loupe edge
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
     const loupeSize = LOUPE_RADIUS * 2
@@ -181,49 +181,60 @@ export default function Loupe({
 
     // If we have a stored relative position, use it
     if (relativePosition) {
+      // Calculate total distance from finger center to loupe center
+      const distanceToCenter = distanceFromFinger + LOUPE_RADIUS
+      
       switch (relativePosition) {
         case 'top-left':
-          loupeX = position.x - loupeSize - offset
-          loupeY = position.y - loupeSize - offset
+          // 225 degrees (down-left)
+          loupeX = position.x + distanceToCenter * Math.cos(225 * Math.PI / 180) - LOUPE_RADIUS
+          loupeY = position.y + distanceToCenter * Math.sin(225 * Math.PI / 180) - LOUPE_RADIUS
           break
         case 'top-left-top':
-          loupeX = position.x - loupeSize / 2 - offset
-          loupeY = position.y - loupeSize - offset
+          // 202.5 degrees (between down-left and down)
+          loupeX = position.x + distanceToCenter * Math.cos(202.5 * Math.PI / 180) - LOUPE_RADIUS
+          loupeY = position.y + distanceToCenter * Math.sin(202.5 * Math.PI / 180) - LOUPE_RADIUS
           break
         case 'top':
-          loupeX = position.x - loupeSize / 2
-          loupeY = position.y - loupeSize - offset
+          // 270 degrees (straight up)
+          loupeX = position.x + distanceToCenter * Math.cos(270 * Math.PI / 180) - LOUPE_RADIUS
+          loupeY = position.y + distanceToCenter * Math.sin(270 * Math.PI / 180) - LOUPE_RADIUS
           break
         case 'top-top-right':
-          loupeX = position.x + offset - loupeSize / 2
-          loupeY = position.y - loupeSize - offset
+          // 337.5 degrees (between up and up-right)
+          loupeX = position.x + distanceToCenter * Math.cos(337.5 * Math.PI / 180) - LOUPE_RADIUS
+          loupeY = position.y + distanceToCenter * Math.sin(337.5 * Math.PI / 180) - LOUPE_RADIUS
           break
         case 'top-right':
-          loupeX = position.x + offset
-          loupeY = position.y - loupeSize - offset
+          // 315 degrees (up-right)
+          loupeX = position.x + distanceToCenter * Math.cos(315 * Math.PI / 180) - LOUPE_RADIUS
+          loupeY = position.y + distanceToCenter * Math.sin(315 * Math.PI / 180) - LOUPE_RADIUS
           break
         case 'bottom-right':
-          loupeX = position.x + offset
-          loupeY = position.y + offset
+          // 45 degrees (down-right)
+          loupeX = position.x + distanceToCenter * Math.cos(45 * Math.PI / 180) - LOUPE_RADIUS
+          loupeY = position.y + distanceToCenter * Math.sin(45 * Math.PI / 180) - LOUPE_RADIUS
           break
         case 'bottom-left':
-          loupeX = position.x - loupeSize - offset
-          loupeY = position.y + offset
+          // 135 degrees (down-left)
+          loupeX = position.x + distanceToCenter * Math.cos(135 * Math.PI / 180) - LOUPE_RADIUS
+          loupeY = position.y + distanceToCenter * Math.sin(135 * Math.PI / 180) - LOUPE_RADIUS
           break
       }
     } else {
       // Initial positioning logic (prefer top-left)
-      loupeX = position.x - loupeSize - offset
-      loupeY = position.y - loupeSize - offset
+      const distanceToCenter = distanceFromFinger + LOUPE_RADIUS
+      loupeX = position.x + distanceToCenter * Math.cos(225 * Math.PI / 180) - LOUPE_RADIUS
+      loupeY = position.y + distanceToCenter * Math.sin(225 * Math.PI / 180) - LOUPE_RADIUS
 
       // If not enough space on left, try right
       if (loupeX < 0) {
-        loupeX = position.x + offset
+        loupeX = position.x + distanceToCenter * Math.cos(315 * Math.PI / 180) - LOUPE_RADIUS
       }
 
       // If not enough space on top, try bottom
       if (loupeY < 0) {
-        loupeY = position.y + offset
+        loupeY = position.y + distanceToCenter * Math.sin(45 * Math.PI / 180) - LOUPE_RADIUS
       }
     }
 
