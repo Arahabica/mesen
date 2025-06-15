@@ -94,8 +94,8 @@ export function findBestLoupePosition(
     'top',
     'top-top-right',
     'top-right',
-    'bottom-right',
     'bottom-left',
+    'bottom-right',
   ]
 
   for (const position of positions) {
