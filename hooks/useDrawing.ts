@@ -168,9 +168,9 @@ export function useDrawing(lineThickness: number) {
           loupeCenterY = coords.y + distanceToCenter * Math.sin(225 * Math.PI / 180)
           return loupeCenterX - loupeRadius >= 0 && loupeCenterY - loupeRadius >= 0
         case 'top-left-top':
-          // 202.5 degrees (between down-left and down)
-          loupeCenterX = coords.x + distanceToCenter * Math.cos(202.5 * Math.PI / 180)
-          loupeCenterY = coords.y + distanceToCenter * Math.sin(202.5 * Math.PI / 180)
+          // 247.5 degrees (between down-left and down)
+          loupeCenterX = coords.x + distanceToCenter * Math.cos(247.5 * Math.PI / 180)
+          loupeCenterY = coords.y + distanceToCenter * Math.sin(247.5 * Math.PI / 180)
           return loupeCenterX - loupeRadius >= 0 && loupeCenterY - loupeRadius >= 0
         case 'top':
           // 270 degrees (straight up)
@@ -178,9 +178,9 @@ export function useDrawing(lineThickness: number) {
           loupeCenterY = coords.y + distanceToCenter * Math.sin(270 * Math.PI / 180)
           return loupeCenterX - loupeRadius >= 0 && loupeCenterX + loupeRadius <= viewportWidth && loupeCenterY - loupeRadius >= 0
         case 'top-top-right':
-          // 337.5 degrees (between up and up-right)
-          loupeCenterX = coords.x + distanceToCenter * Math.cos(337.5 * Math.PI / 180)
-          loupeCenterY = coords.y + distanceToCenter * Math.sin(337.5 * Math.PI / 180)
+          // 292.5 degrees (between up and up-right)
+          loupeCenterX = coords.x + distanceToCenter * Math.cos(292.5 * Math.PI / 180)
+          loupeCenterY = coords.y + distanceToCenter * Math.sin(292.5 * Math.PI / 180)
           return loupeCenterX + loupeRadius <= viewportWidth && loupeCenterY - loupeRadius >= 0
         case 'top-right':
           // 315 degrees (up-right)

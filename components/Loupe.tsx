@@ -191,9 +191,9 @@ export default function Loupe({
           loupeY = position.y + distanceToCenter * Math.sin(225 * Math.PI / 180) - LOUPE_RADIUS
           break
         case 'top-left-top':
-          // 202.5 degrees (between down-left and down)
-          loupeX = position.x + distanceToCenter * Math.cos(202.5 * Math.PI / 180) - LOUPE_RADIUS
-          loupeY = position.y + distanceToCenter * Math.sin(202.5 * Math.PI / 180) - LOUPE_RADIUS
+          // 247.5 degrees (between down-left and down)
+          loupeX = position.x + distanceToCenter * Math.cos(247.5 * Math.PI / 180) - LOUPE_RADIUS
+          loupeY = position.y + distanceToCenter * Math.sin(247.5 * Math.PI / 180) - LOUPE_RADIUS
           break
         case 'top':
           // 270 degrees (straight up)
@@ -201,9 +201,9 @@ export default function Loupe({
           loupeY = position.y + distanceToCenter * Math.sin(270 * Math.PI / 180) - LOUPE_RADIUS
           break
         case 'top-top-right':
-          // 337.5 degrees (between up and up-right)
-          loupeX = position.x + distanceToCenter * Math.cos(337.5 * Math.PI / 180) - LOUPE_RADIUS
-          loupeY = position.y + distanceToCenter * Math.sin(337.5 * Math.PI / 180) - LOUPE_RADIUS
+          // 292.5 degrees (between up and up-right)
+          loupeX = position.x + distanceToCenter * Math.cos(292.5 * Math.PI / 180) - LOUPE_RADIUS
+          loupeY = position.y + distanceToCenter * Math.sin(292.5 * Math.PI / 180) - LOUPE_RADIUS
           break
         case 'top-right':
           // 315 degrees (up-right)
