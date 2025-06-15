@@ -29,7 +29,7 @@ export default function Loupe({
 }: LoupeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [animationProgress, setAnimationProgress] = useState(0)
-  const animationFrameRef = useRef<number>()
+  const animationFrameRef = useRef<number | undefined>(undefined)
   const [isFlashing, setIsFlashing] = useState(false)
   const prevModeRef = useRef<DrawingMode>(mode)
 

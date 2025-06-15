@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { Position, ImageSize } from '@/types/editor'
 import { MIN_SCALE, MAX_SCALE } from '@/constants/editor'
 
-export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<HTMLDivElement>) {
+export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<HTMLDivElement | null>) {
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 })
   const [isInitialized, setIsInitialized] = useState(false)

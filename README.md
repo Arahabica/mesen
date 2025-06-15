@@ -89,10 +89,10 @@
 ## 技術仕様
 
 ### フレームワーク・言語
-- **フレームワーク**: Next.js 14.2.29
+- **フレームワーク**: Next.js 15.3.3
 - **言語**: TypeScript
 - **スタイリング**: Tailwind CSS
-- **UI**: React 18
+- **UI**: React 19
 - **ビルドツール**: Next.js (SSG)
 
 ### API使用
