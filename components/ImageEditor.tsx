@@ -201,20 +201,23 @@ export default function ImageEditor() {
     // e.preventDefault()
     
     // Handle pinch zoom and pan - this takes priority
-    const pinchScale = touch.getPinchScale(e.touches)
-    if (pinchScale) {
-      const center = touch.getPinchCenter(e.touches)
-      if (center) {
-        zoomPan.handlePinchZoom(zoomPan.scale * pinchScale, center.x, center.y)
+    if (touch.isPinching) {
+      // Only handle zoom if gesture type is pinch
+      const pinchScale = touch.getPinchScale(e.touches)
+      if (pinchScale) {
+        const center = touch.getPinchCenter(e.touches)
+        if (center) {
+          zoomPan.handlePinchZoom(zoomPan.scale * pinchScale, center.x, center.y)
+        }
       }
       
-      // Also handle pan based on pinch center movement
+      // Only handle pan if gesture type is pan
       const pinchDelta = touch.getPinchCenterDelta(e.touches)
       if (pinchDelta) {
         zoomPan.pan(pinchDelta.x, pinchDelta.y)
       }
       
-      // Don't process any other touch logic during pinch
+      // Don't process any other touch logic during two-finger gestures
       return
     }
     

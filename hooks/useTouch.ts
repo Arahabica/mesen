@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { Position } from '@/types/editor'
-import { LONG_PRESS_DURATION, CLICK_DISTANCE_THRESHOLD, ADJUST_MODE_DELAY, DRAW_MODE_DELAY } from '@/constants/editor'
+import { LONG_PRESS_DURATION, CLICK_DISTANCE_THRESHOLD, ADJUST_MODE_DELAY, DRAW_MODE_DELAY, PINCH_DISTANCE_THRESHOLD, PINCH_CENTER_THRESHOLD } from '@/constants/editor'
 
 export function useTouch() {
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
@@ -16,6 +16,9 @@ export function useTouch() {
   const lastPinchCenterRef = useRef<Position | null>(null)
   const isStationaryRef = useRef(false)
   const stationaryStartPosRef = useRef<Position | null>(null)
+  const gestureTypeRef = useRef<'none' | 'pinch' | 'pan'>('none')
+  const initialPinchDistanceRef = useRef<number | null>(null)
+  const initialPinchCenterRef = useRef<Position | null>(null)
 
   const getTouchDistance = (touch1: React.Touch, touch2: React.Touch) => {
     return Math.sqrt(
@@ -31,11 +34,16 @@ export function useTouch() {
       isPinchingRef.current = true
       const distance = getTouchDistance(touches[0], touches[1])
       setLastTouchDistance(distance)
+      initialPinchDistanceRef.current = distance
       // Set initial pinch center
-      lastPinchCenterRef.current = {
+      const center = {
         x: (touches[0].clientX + touches[1].clientX) / 2,
         y: (touches[0].clientY + touches[1].clientY) / 2
       }
+      lastPinchCenterRef.current = center
+      initialPinchCenterRef.current = center
+      // Reset gesture type - will be determined on first move
+      gestureTypeRef.current = 'none'
       // Clear any timers when starting pinch
       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
       if (adjustModeTimerRef.current) clearTimeout(adjustModeTimerRef.current)
@@ -153,6 +161,9 @@ export function useTouch() {
       isPinchingRef.current = false
       setLastTouchDistance(null)
       lastPinchCenterRef.current = null
+      gestureTypeRef.current = 'none'
+      initialPinchDistanceRef.current = null
+      initialPinchCenterRef.current = null
       
       // Clear all timers
       if (longPressTimerRef.current) {
@@ -182,9 +193,35 @@ export function useTouch() {
   const getPinchScale = useCallback((touches: React.TouchList) => {
     if (touches.length === 2 && lastTouchDistance !== null && isPinchingRef.current) {
       const currentDistance = getTouchDistance(touches[0], touches[1])
-      const scale = currentDistance / lastTouchDistance
-      setLastTouchDistance(currentDistance)
-      return scale
+      
+      // Determine gesture type on first significant movement
+      if (gestureTypeRef.current === 'none' && initialPinchDistanceRef.current && initialPinchCenterRef.current) {
+        const distanceChange = Math.abs(currentDistance - initialPinchDistanceRef.current)
+        const currentCenter = {
+          x: (touches[0].clientX + touches[1].clientX) / 2,
+          y: (touches[0].clientY + touches[1].clientY) / 2
+        }
+        const centerChange = Math.sqrt(
+          Math.pow(currentCenter.x - initialPinchCenterRef.current.x, 2) +
+          Math.pow(currentCenter.y - initialPinchCenterRef.current.y, 2)
+        )
+        
+        // If distance changed more than center moved, it's a pinch
+        // Use a threshold to avoid false detection
+        if (distanceChange > PINCH_DISTANCE_THRESHOLD || centerChange > PINCH_CENTER_THRESHOLD) {
+          gestureTypeRef.current = distanceChange > centerChange * 1.5 ? 'pinch' : 'pan'
+        }
+      }
+      
+      // Only return scale if gesture is pinch
+      if (gestureTypeRef.current === 'pinch') {
+        const scale = currentDistance / lastTouchDistance
+        setLastTouchDistance(currentDistance)
+        return scale
+      } else {
+        // Keep updating distance for potential gesture type change
+        setLastTouchDistance(currentDistance)
+      }
     }
     return null
   }, [lastTouchDistance])
@@ -205,12 +242,33 @@ export function useTouch() {
         x: (touches[0].clientX + touches[1].clientX) / 2,
         y: (touches[0].clientY + touches[1].clientY) / 2
       }
-      const delta = {
-        x: currentCenter.x - lastPinchCenterRef.current.x,
-        y: currentCenter.y - lastPinchCenterRef.current.y
+      
+      // Determine gesture type on first significant movement if not yet determined
+      if (gestureTypeRef.current === 'none' && initialPinchDistanceRef.current && initialPinchCenterRef.current) {
+        const currentDistance = getTouchDistance(touches[0], touches[1])
+        const distanceChange = Math.abs(currentDistance - initialPinchDistanceRef.current)
+        const centerChange = Math.sqrt(
+          Math.pow(currentCenter.x - initialPinchCenterRef.current.x, 2) +
+          Math.pow(currentCenter.y - initialPinchCenterRef.current.y, 2)
+        )
+        
+        if (distanceChange > PINCH_DISTANCE_THRESHOLD || centerChange > PINCH_CENTER_THRESHOLD) {
+          gestureTypeRef.current = distanceChange > centerChange * 1.5 ? 'pinch' : 'pan'
+        }
       }
-      lastPinchCenterRef.current = currentCenter
-      return delta
+      
+      // Only return delta if gesture is pan
+      if (gestureTypeRef.current === 'pan') {
+        const delta = {
+          x: currentCenter.x - lastPinchCenterRef.current.x,
+          y: currentCenter.y - lastPinchCenterRef.current.y
+        }
+        lastPinchCenterRef.current = currentCenter
+        return delta
+      } else {
+        // Keep updating center for potential gesture type change
+        lastPinchCenterRef.current = currentCenter
+      }
     }
     return null
   }, [])
@@ -233,6 +291,7 @@ export function useTouch() {
 
   return {
     isPinching: isPinchingRef.current,
+    gestureType: gestureTypeRef.current,
     hasMoved,
     isStationary: isStationaryRef.current,
     startTouch,

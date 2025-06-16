@@ -35,3 +35,5 @@ export const DRAW_MODE_DELAY = 1000   // 調整モードから描画モードへ
 export const MAX_SCALE = 5
 export const MIN_SCALE = 0.1
 export const CLICK_DISTANCE_THRESHOLD = 5
+export const PINCH_DISTANCE_THRESHOLD = 7   // ピンチ/パン判定の距離変化閾値
+export const PINCH_CENTER_THRESHOLD = 12    // ピンチ/パン判定の中心移動閾値
