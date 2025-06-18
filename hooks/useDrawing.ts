@@ -160,7 +160,6 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
       position: coords,
       mode: 'adjust',
       isStationary: false,  // Start with non-stationary
-      initialPosition: coords,  // Store the initial position
       relativePosition: relativePos  // Store the relative position
     })
   }, [])
@@ -190,7 +189,6 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
       visible: false,
       position: { x: 0, y: 0 },
       mode: 'move',
-      initialPosition: undefined
     })
   }, [])
 
