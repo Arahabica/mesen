@@ -39,6 +39,8 @@ export default function Loupe({
   const prevModeRef = useRef<DrawingMode>(mode)
   const drawModeStartPositionRef = useRef<Position | null>(null)
   const positionRef = useRef<Position>(position)
+  const [circleScale, setCircleScale] = useState(1)
+  const circleAnimationRef = useRef<number | undefined>(undefined)
 
   // Update position ref
   useEffect(() => {
@@ -82,9 +84,9 @@ export default function Loupe({
       LOUPE_RADIUS * 2
     )
 
-    // Draw center indicator
+    // Draw center indicator with scale animation
     ctx.beginPath()
-    ctx.arc(LOUPE_RADIUS, LOUPE_RADIUS, lineThickness * effectiveMagnification * 0.5, 0, Math.PI * 2)
+    ctx.arc(LOUPE_RADIUS, LOUPE_RADIUS, lineThickness * effectiveMagnification * 0.5 * circleScale, 0, Math.PI * 2)
     ctx.fillStyle = mode === 'draw' ? 'rgba(0, 0, 0, 1)' : 'rgba(0, 0, 0, 0.5)'
     ctx.fill()
 
@@ -120,23 +122,54 @@ export default function Loupe({
       ctx.lineWidth = 2
       ctx.stroke()
     }
-  }, [visible, position, mode, isStationary, sourceCanvas, lineThickness, scale, imagePosition, getCanvasCoordinates, animationProgress])
+  }, [visible, position, mode, isStationary, sourceCanvas, lineThickness, scale, imagePosition, getCanvasCoordinates, animationProgress, circleScale])
 
-  // Handle flash effect and pen icon when entering draw mode
+  // Handle flash effect, pen icon, and circle scale animation when entering draw mode
   useEffect(() => {
     if (mode === 'draw' && prevModeRef.current === 'adjust') {
+      // Flash effect
       setIsFlashing(true)
       setShowPenIcon(true)
       setPenIconAnimationType('show')
       drawModeStartPositionRef.current = positionRef.current
       
-      // Flash effect
       const flashTimer = setTimeout(() => {
         setIsFlashing(false)
       }, 100)
       
+      // Circle scale animation
+      const startTime = Date.now()
+      const duration = 500 // 500ms animation
+      
+      const animateCircle = () => {
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(elapsed / duration, 1)
+        
+        // Ease-out animation: scale up to 1.5x then back to 1x
+        if (progress < 0.5) {
+          // Scale up phase (0 to 0.5 progress)
+          const scaleProgress = progress * 2 // 0 to 1
+          setCircleScale(1 + scaleProgress) // 1 to 2
+        } else {
+          // Scale down phase (0.5 to 1 progress)
+          const scaleProgress = (progress - 0.5) * 2 // 0 to 1
+          setCircleScale(2 - scaleProgress) // 2 to 1
+        }
+        
+        if (progress < 1) {
+          circleAnimationRef.current = requestAnimationFrame(animateCircle)
+        } else {
+          setCircleScale(1)
+        }
+      }
+      
+      circleAnimationRef.current = requestAnimationFrame(animateCircle)
+      
       return () => {
         clearTimeout(flashTimer)
+        if (circleAnimationRef.current) {
+          cancelAnimationFrame(circleAnimationRef.current)
+        }
       }
     } else if (mode !== 'draw') {
       // Reset pen icon when leaving draw mode
