@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { Pen } from 'lucide-react'
 import { Position, DrawingMode, LoupeRelativePosition } from '@/types/editor'
 import { calculateLoupeTopLeftPosition, LOUPE_RADIUS } from '@/utils/loupePosition'
 
@@ -33,6 +34,7 @@ export default function Loupe({
   const [animationProgress, setAnimationProgress] = useState(0)
   const animationFrameRef = useRef<number | undefined>(undefined)
   const [isFlashing, setIsFlashing] = useState(false)
+  const [showPenIcon, setShowPenIcon] = useState(false)
   const prevModeRef = useRef<DrawingMode>(mode)
 
   useEffect(() => {
@@ -112,14 +114,26 @@ export default function Loupe({
     }
   }, [visible, position, mode, isStationary, sourceCanvas, lineThickness, scale, imagePosition, getCanvasCoordinates, animationProgress])
 
-  // Handle flash effect when entering draw mode
+  // Handle flash effect and pen icon when entering draw mode
   useEffect(() => {
     if (mode === 'draw' && prevModeRef.current === 'adjust') {
       setIsFlashing(true)
-      const timer = setTimeout(() => {
+      setShowPenIcon(true)
+      
+      // Flash effect
+      const flashTimer = setTimeout(() => {
         setIsFlashing(false)
       }, 100)
-      return () => clearTimeout(timer)
+      
+      // Pen icon display
+      const penTimer = setTimeout(() => {
+        setShowPenIcon(false)
+      }, 800)
+      
+      return () => {
+        clearTimeout(flashTimer)
+        clearTimeout(penTimer)
+      }
     }
     prevModeRef.current = mode
   }, [mode])
@@ -227,6 +241,23 @@ export default function Loupe({
             animation: 'flash 100ms ease-out'
           }}
         />
+      )}
+      {showPenIcon && (
+        <div
+          className="absolute inset-0 flex items-center justify-center"
+          style={{
+            animation: 'penIconFade 1200ms ease-out'
+          }}
+        >
+          <Pen
+            size={24}
+            className="text-black drop-shadow-sm"
+            style={{
+              filter: 'drop-shadow(0 0 2px rgba(255, 255, 255, 0.8))',
+              transform: 'translate(12px, -12px)'
+            }}
+          />
+        </div>
       )}
     </div>
   )
