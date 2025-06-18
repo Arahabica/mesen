@@ -174,14 +174,15 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
   }, [])
 
   const updateLoupePosition = useCallback((coords: Position, isStationary?: boolean) => {
-    if (loupeState.visible) {
-      setLoupeState(prev => ({
+    setLoupeState(prev => {
+      if (!prev.visible) return prev
+      return {
         ...prev,
         position: coords,
         isStationary: drawingMode === 'adjust' ? isStationary : false
-      }))
-    }
-  }, [loupeState.visible, drawingMode])
+      }
+    })
+  }, [drawingMode])
 
   const resetMode = useCallback(() => {
     setDrawingMode('move')

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
+import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react'
 import { X, RotateCcw, Download } from 'lucide-react'
 import { Line, LoupeState, DrawingMode } from '@/types/editor'
 import Loupe from './Loupe'
@@ -59,41 +59,63 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
     getCanvas: () => canvasRef.current
   }))
 
+  // State to track if image is loaded
+  const [isImageLoaded, setIsImageLoaded] = useState(false)
+
+  // Handle image loading only once
   useEffect(() => {
-    const redrawCanvas = () => {
-      const canvas = canvasRef.current
-      if (!canvas || !image) return
+    const canvas = canvasRef.current
+    if (!canvas || !image) return
+    
+    setIsImageLoaded(false)
+    const img = new Image()
+    img.onload = () => {
+      canvas.width = img.width
+      canvas.height = img.height
+      onImageLoad(img.width, img.height)
       
+      // Draw the initial image
       const ctx = canvas.getContext('2d')
-      if (!ctx) return
-      
-      const img = new Image()
-      img.onload = () => {
-        canvas.width = img.width
-        canvas.height = img.height
-        onImageLoad(img.width, img.height)
-        
+      if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(img, 0, 0)
-        
-        ctx.strokeStyle = 'black'
-        ctx.lineCap = 'round'
-        ctx.lineJoin = 'round'
-        
-        const allLines = currentLine ? [...lines, currentLine] : lines
-        allLines.forEach(line => {
-          ctx.lineWidth = line.thickness
-          ctx.beginPath()
-          ctx.moveTo(line.start.x, line.start.y)
-          ctx.lineTo(line.end.x, line.end.y)
-          ctx.stroke()
-        })
       }
-      img.src = image
+      
+      setIsImageLoaded(true)
     }
+    img.src = image
+  }, [image, onImageLoad])
+
+  // Handle canvas redraw for lines only
+  useEffect(() => {
+    if (!isImageLoaded) return
     
-    redrawCanvas()
-  }, [image, lines, currentLine, onImageLoad])
+    const canvas = canvasRef.current
+    if (!canvas || !image) return
+    
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    
+    const img = new Image()
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 0)
+      
+      ctx.strokeStyle = 'black'
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      
+      const allLines = currentLine ? [...lines, currentLine] : lines
+      allLines.forEach(line => {
+        ctx.lineWidth = line.thickness
+        ctx.beginPath()
+        ctx.moveTo(line.start.x, line.start.y)
+        ctx.lineTo(line.end.x, line.end.y)
+        ctx.stroke()
+      })
+    }
+    img.src = image
+  }, [image, lines, currentLine, isImageLoaded])
 
   // Vibration feedback for mode transitions
   useEffect(() => {

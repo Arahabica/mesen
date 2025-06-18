@@ -76,9 +76,11 @@ export default function Loupe({
 
     // Draw center indicator
     ctx.beginPath()
-    ctx.arc(LOUPE_RADIUS, LOUPE_RADIUS, lineThickness * effectiveMagnification / 2, 0, Math.PI * 2)
+    ctx.arc(LOUPE_RADIUS, LOUPE_RADIUS, lineThickness * effectiveMagnification * 0.5, 0, Math.PI * 2)
     ctx.fillStyle = mode === 'draw' ? 'rgba(0, 0, 0, 1)' : 'rgba(0, 0, 0, 0.5)'
     ctx.fill()
+    ctx.fillStyle = 'rgba(255, 255, 255, 1)'
+    ctx.fillText(lineThickness.toString(), LOUPE_RADIUS, LOUPE_RADIUS)
 
     // Draw border
     ctx.restore()

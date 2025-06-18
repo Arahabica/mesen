@@ -31,12 +31,12 @@ export default function ImageEditor() {
     setImage(selectedImage)
   }
 
-  const handleImageLoad = (width: number, height: number) => {
+  const handleImageLoad = useCallback((width: number, height: number) => {
     setImageSize({ width, height })
     // Set default thickness based on image dimensions
     const defaultThickness = getDefaultThickness(width, height)
     setLineThickness(defaultThickness)
-  }
+  }, [])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const { clientX, clientY } = e
@@ -154,10 +154,33 @@ export default function ImageEditor() {
     
     const onLongPress = () => {
       const coords = zoomPan.getCanvasCoordinates(touchCoords.x, touchCoords.y)
-      drawing.startDrawing(coords, lineThickness)
+      // Calculate dynamic thickness for long press
+      let dynamicThickness = lineThickness
+      if (imageSize.width > 0) {
+        const container = containerRef.current
+        if (container) {
+          const screenWidth = container.clientWidth
+          const targetScreenThickness = screenWidth / 100
+          const targetImageThickness = targetScreenThickness / zoomPan.scale
+          dynamicThickness = getDynamicThickness(imageSize.width, imageSize.height, targetImageThickness)
+          setLineThickness(dynamicThickness)
+        }
+      }
+      drawing.startDrawing(coords, dynamicThickness)
     }
     
     const onAdjustMode = () => {
+      // Calculate dynamic thickness when entering adjust mode
+      if (imageSize.width > 0) {
+        const container = containerRef.current
+        if (container) {
+          const screenWidth = container.clientWidth
+          const targetScreenThickness = screenWidth / 100
+          const targetImageThickness = targetScreenThickness / zoomPan.scale
+          const dynamicThickness = getDynamicThickness(imageSize.width, imageSize.height, targetImageThickness)
+          setLineThickness(dynamicThickness)
+        }
+      }
       // Use screen coordinates for loupe display
       drawing.startAdjustMode(touchCoords)
     }
@@ -195,7 +218,7 @@ export default function ImageEditor() {
       // Start dragging immediately for smooth panning
       zoomPan.startDragging(touchPoint.clientX, touchPoint.clientY)
     }
-  }, [touch, drawing, zoomPan, imageSize.width, imageSize.height])
+  }, [touch, drawing, zoomPan, imageSize.width, imageSize.height, lineThickness])
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     // e.preventDefault()

@@ -85,8 +85,8 @@ export function useTouch() {
       const touch = touches[0]
       const currentPos = { x: touch.clientX, y: touch.clientY }
       
-      // Check if moved from initial position
-      if (initialTouchPos && !hasMoved) {
+      // Check if moved from initial position using ref
+      if (initialTouchPos && !hasMovedRef.current) {
         const distance = Math.sqrt(
           Math.pow(touch.clientX - initialTouchPos.x, 2) + 
           Math.pow(touch.clientY - initialTouchPos.y, 2)
@@ -153,7 +153,7 @@ export function useTouch() {
       
       lastTouchPositionRef.current = currentPos
     }
-  }, [initialTouchPos, hasMoved])
+  }, [])
 
   const endTouch = useCallback((touches: React.TouchList) => {
     // Only reset pinch state when ALL fingers are lifted
@@ -274,8 +274,8 @@ export function useTouch() {
   }, [])
 
   const isQuickTap = useCallback(() => {
-    return Date.now() - touchStartTimeRef.current < LONG_PRESS_DURATION && !hasMoved
-  }, [hasMoved])
+    return Date.now() - touchStartTimeRef.current < LONG_PRESS_DURATION && !hasMovedRef.current
+  }, [])
 
   const cleanup = useCallback(() => {
     if (longPressTimerRef.current) {
