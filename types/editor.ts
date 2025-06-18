@@ -23,6 +23,5 @@ export interface LoupeState {
   position: Position
   mode: DrawingMode
   isStationary?: boolean
-  initialPosition?: Position
   relativePosition?: LoupeRelativePosition
 }

@@ -12,7 +12,6 @@ interface LoupeProps {
   scale: number
   imagePosition: Position
   getCanvasCoordinates: (screenX: number, screenY: number) => Position
-  initialPosition?: Position  // Initial position when entering adjust mode
   relativePosition?: LoupeRelativePosition
 }
 
@@ -28,7 +27,6 @@ export default function Loupe({
   scale,
   imagePosition,
   getCanvasCoordinates,
-  initialPosition,
   relativePosition
 }: LoupeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -79,8 +77,6 @@ export default function Loupe({
     ctx.arc(LOUPE_RADIUS, LOUPE_RADIUS, lineThickness * effectiveMagnification * 0.5, 0, Math.PI * 2)
     ctx.fillStyle = mode === 'draw' ? 'rgba(0, 0, 0, 1)' : 'rgba(0, 0, 0, 0.5)'
     ctx.fill()
-    ctx.fillStyle = 'rgba(255, 255, 255, 1)'
-    ctx.fillText(lineThickness.toString(), LOUPE_RADIUS, LOUPE_RADIUS)
 
     // Draw border
     ctx.restore()
@@ -132,8 +128,8 @@ export default function Loupe({
   useEffect(() => {
     if (mode === 'adjust' && isStationary) {
       const startTime = Date.now()
-      const delay = 500 // 0.5 seconds delay before starting
-      const animationDuration = 500 // 0.5 seconds for the animation
+      const delay = 350 // 0.35 seconds delay before starting
+      const animationDuration = 650 // 0.65 seconds for the animation
       
       const animate = () => {
         const elapsed = Date.now() - startTime
