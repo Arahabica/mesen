@@ -14,6 +14,8 @@ export default function ImageEditor() {
   const [lineThickness, setLineThickness] = useState(10)
   const [imageSize, setImageSize] = useState<ImageSize>({ width: 0, height: 0 })
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
+  const [showLanding, setShowLanding] = useState(true)
+  const [canvasOpacity, setCanvasOpacity] = useState(0)
   
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasEditorRef = useRef<CanvasEditorRef>(null)
@@ -29,6 +31,14 @@ export default function ImageEditor() {
 
   const handleImageSelect = (selectedImage: string) => {
     setImage(selectedImage)
+    // Start fade-in animation
+    requestAnimationFrame(() => {
+      setCanvasOpacity(1)
+    })
+    // Remove landing page after animation
+    setTimeout(() => {
+      setShowLanding(false)
+    }, 200)
   }
 
   const handleImageLoad = useCallback((width: number, height: number) => {
@@ -366,6 +376,8 @@ export default function ImageEditor() {
     drawing.setLines([])
     zoomPan.reset()
     setImageSize({ width: 0, height: 0 })
+    setCanvasOpacity(0)
+    setShowLanding(true)
   }, [drawing, zoomPan])
 
   React.useEffect(() => {
@@ -379,36 +391,50 @@ export default function ImageEditor() {
     }
   }, [handleWheel, image])
 
-  if (!image) {
-    return <LandingPage onImageSelect={handleImageSelect} />
-  }
-
   return (
-    <div ref={containerRef}>
-      <CanvasEditor
-        ref={canvasEditorRef}
-        image={image}
-        lines={drawing.lines}
-        currentLine={drawing.currentLine}
-        scale={zoomPan.scale}
-        position={zoomPan.position}
-        lineThickness={lineThickness}
-        isDrawing={drawing.isDrawing}
-        drawingMode={drawing.drawingMode}
-        loupeState={drawing.loupeState}
-        isZoomInitialized={zoomPan.isInitialized}
-        getCanvasCoordinates={zoomPan.getCanvasCoordinates}
-        onImageLoad={handleImageLoad}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onUndo={drawing.undo}
-        onDownload={download}
-        onClose={closeImage}
-      />
-    </div>
+    <>
+      {showLanding && (
+        <LandingPage onImageSelect={handleImageSelect} />
+      )}
+      {image && (
+        <div 
+          ref={containerRef}
+          style={{
+            opacity: canvasOpacity,
+            transition: 'opacity 0.2s ease-in-out',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0
+          }}
+        >
+          <CanvasEditor
+            ref={canvasEditorRef}
+            image={image}
+            lines={drawing.lines}
+            currentLine={drawing.currentLine}
+            scale={zoomPan.scale}
+            position={zoomPan.position}
+            lineThickness={lineThickness}
+            isDrawing={drawing.isDrawing}
+            drawingMode={drawing.drawingMode}
+            loupeState={drawing.loupeState}
+            isZoomInitialized={zoomPan.isInitialized}
+            getCanvasCoordinates={zoomPan.getCanvasCoordinates}
+            onImageLoad={handleImageLoad}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onUndo={drawing.undo}
+            onDownload={download}
+            onClose={closeImage}
+          />
+        </div>
+      )}
+    </>
   )
 }
