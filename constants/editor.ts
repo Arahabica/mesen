@@ -1,4 +1,4 @@
-export const THICKNESS_RATIOS = [0.0025, 0.005, 0.01, 0.02, 0.05, 0.1]
+export const THICKNESS_RATIOS = [0.003, 0.005, 0.01, 0.02, 0.05, 0.1]
 export const DEFAULT_THICKNESS_RATIO = 0.01
 
 export function getThicknessOptions(imageWidth: number, imageHeight: number): number[] {

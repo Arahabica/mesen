@@ -149,6 +149,7 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
     scale,
     position,
     isDragging,
+    isInitialized,
     getCanvasCoordinates,
     startDragging,
     drag,

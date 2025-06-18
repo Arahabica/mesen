@@ -13,6 +13,7 @@ interface CanvasEditorProps {
   isDrawing: boolean
   drawingMode: DrawingMode
   loupeState: LoupeState
+  isZoomInitialized: boolean
   getCanvasCoordinates: (screenX: number, screenY: number) => { x: number; y: number }
   onImageLoad: (width: number, height: number) => void
   onMouseDown: (e: React.MouseEvent) => void
@@ -40,6 +41,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   isDrawing,
   drawingMode,
   loupeState,
+  isZoomInitialized,
   getCanvasCoordinates,
   onImageLoad,
   onMouseDown,
@@ -189,7 +191,9 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
             transformOrigin: 'top left',
             cursor: isDrawing ? 'crosshair' : 'move',
-            imageRendering: 'auto'
+            imageRendering: 'auto',
+            opacity: isImageLoaded && isZoomInitialized ? 1 : 0,
+            transition: 'opacity 0.2s ease-in-out'
           }}
         />
         <Loupe
