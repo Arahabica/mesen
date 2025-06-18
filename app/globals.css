@@ -22,21 +22,28 @@ html, body {
   }
 }
 
-@keyframes penIconFade {
+@keyframes penIconShow {
   0% {
     opacity: 0;
     transform: scale(0.8);
   }
-  20% {
+  50% {
     opacity: 1;
     transform: scale(1.1);
   }
-  40% {
+  100% {
     opacity: 1;
     transform: scale(1);
   }
-  100% {
-    opacity: 0;
+}
+
+@keyframes penIconHide {
+  from {
+    opacity: 1;
     transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.8);
   }
 }

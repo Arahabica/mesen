@@ -35,7 +35,15 @@ export default function Loupe({
   const animationFrameRef = useRef<number | undefined>(undefined)
   const [isFlashing, setIsFlashing] = useState(false)
   const [showPenIcon, setShowPenIcon] = useState(false)
+  const [penIconAnimationType, setPenIconAnimationType] = useState<'show' | 'hide'>('show')
   const prevModeRef = useRef<DrawingMode>(mode)
+  const drawModeStartPositionRef = useRef<Position | null>(null)
+  const positionRef = useRef<Position>(position)
+
+  // Update position ref
+  useEffect(() => {
+    positionRef.current = position
+  }, [position])
 
   useEffect(() => {
     if (!visible || !sourceCanvas || !canvasRef.current) return
@@ -119,24 +127,61 @@ export default function Loupe({
     if (mode === 'draw' && prevModeRef.current === 'adjust') {
       setIsFlashing(true)
       setShowPenIcon(true)
+      setPenIconAnimationType('show')
+      drawModeStartPositionRef.current = positionRef.current
       
       // Flash effect
       const flashTimer = setTimeout(() => {
         setIsFlashing(false)
       }, 100)
       
-      // Pen icon display
-      const penTimer = setTimeout(() => {
-        setShowPenIcon(false)
-      }, 800)
-      
       return () => {
         clearTimeout(flashTimer)
-        clearTimeout(penTimer)
       }
+    } else if (mode !== 'draw') {
+      // Reset pen icon when leaving draw mode
+      setShowPenIcon(false)
+      drawModeStartPositionRef.current = null
     }
     prevModeRef.current = mode
   }, [mode])
+
+  // Handle pen icon visibility based on movement in draw mode
+  useEffect(() => {
+    if (mode === 'draw' && showPenIcon && drawModeStartPositionRef.current) {
+      let isActive = true
+      
+      const checkMovement = () => {
+        if (!isActive || !drawModeStartPositionRef.current) return
+        
+        const startPos = drawModeStartPositionRef.current
+        const currentPos = positionRef.current
+        
+        // Calculate distance moved
+        const distanceMoved = Math.sqrt(
+          Math.pow(currentPos.x - startPos.x, 2) + Math.pow(currentPos.y - startPos.y, 2)
+        )
+        
+        // Hide pen icon if moved more than 5px
+        if (distanceMoved > 5) {
+          setPenIconAnimationType('hide')
+          setTimeout(() => {
+            if (isActive) {
+              setShowPenIcon(false)
+            }
+          }, 200) // Wait for hide animation to complete
+        } else {
+          requestAnimationFrame(checkMovement)
+        }
+      }
+      
+      requestAnimationFrame(checkMovement)
+      
+      return () => {
+        isActive = false
+      }
+    }
+  }, [mode, showPenIcon])
 
   // Handle animation
   useEffect(() => {
@@ -246,7 +291,9 @@ export default function Loupe({
         <div
           className="absolute inset-0 flex items-center justify-center"
           style={{
-            animation: 'penIconFade 1200ms ease-out'
+            animation: penIconAnimationType === 'show' 
+              ? 'penIconShow 300ms ease-out forwards' 
+              : 'penIconHide 200ms ease-out forwards'
           }}
         >
           <Pen
