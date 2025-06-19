@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Position, ImageSize } from '@/types/editor'
-import { MAX_SCALE, DOUBLE_TAP_ZOOM_FACTOR, DOUBLE_TAP_ANIMATION_DURATION } from '@/constants/editor'
+import { MAX_SCALE, DOUBLE_TAP_ZOOM_FACTOR, ZOOM_ANIMATION_DURATION } from '@/constants/editor'
 
 const DEFAULT_MIN_SCALE = 0.1
 
@@ -184,7 +184,7 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
     
     const animate = () => {
       const elapsed = Date.now() - startTime
-      const progress = Math.min(elapsed / DOUBLE_TAP_ANIMATION_DURATION, 1)
+      const progress = Math.min(elapsed / ZOOM_ANIMATION_DURATION, 1)
       const easedProgress = easeOutCubic(progress)
       
       const currentScale = startScale + (targetScale - startScale) * easedProgress
