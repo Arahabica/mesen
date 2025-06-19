@@ -248,18 +248,20 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           className="absolute"
           style={{ display: 'none' }}
         />
-        <Loupe
-          visible={loupeState.visible}
-          position={loupeState.position}
-          mode={loupeState.mode}
-          isStationary={loupeState.isStationary}
-          sourceCanvas={canvasRef.current}
-          lineThickness={lineThickness}
-          scale={scale}
-          imagePosition={position}
-          getCanvasCoordinates={getCanvasCoordinates}
-          relativePosition={loupeState.relativePosition}
-        />
+        {loupeState.visible && (
+          <Loupe
+            visible={loupeState.visible}
+            position={loupeState.position}
+            mode={loupeState.mode}
+            isStationary={loupeState.isStationary}
+            sourceCanvas={canvasRef.current}
+            lineThickness={lineThickness}
+            scale={scale}
+            imagePosition={position}
+            getCanvasCoordinates={getCanvasCoordinates}
+            relativePosition={loupeState.relativePosition}
+          />
+        )}
       </div>
     </div>
   )
