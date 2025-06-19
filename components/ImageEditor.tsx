@@ -41,6 +41,20 @@ export default function ImageEditor() {
     }, 200)
   }
 
+  // Calculate dynamic thickness based on current viewport and zoom
+  const calculateDynamicThickness = useCallback(() => {
+    if (imageSize.width === 0) return lineThickness
+    
+    const container = containerRef.current
+    if (!container) return lineThickness
+    
+    const screenWidth = container.clientWidth
+    const targetScreenThickness = screenWidth * AUTO_THICKNESS_SCREEN_RATIO
+    // Convert screen thickness to image coordinates (smaller when zoomed in)
+    const targetImageThickness = targetScreenThickness / zoomPan.scale
+    return getDynamicThickness(imageSize.width, imageSize.height, targetImageThickness)
+  }, [imageSize.width, imageSize.height, zoomPan.scale, lineThickness])
+
   const handleImageLoad = useCallback((width: number, height: number) => {
     setImageSize({ width, height })
     // Set default thickness based on image dimensions
@@ -63,23 +77,9 @@ export default function ImageEditor() {
       longPressTimerRef.current = setTimeout(() => {
         if (!mouseHasMovedRef.current) {
           // Calculate dynamic thickness based on current viewport
-          if (imageSize.width > 0) {
-            // Calculate screen width (viewport width * 3% for target thickness)
-            const container = containerRef.current
-            if (container) {
-              const screenWidth = container.clientWidth
-              const targetScreenThickness = screenWidth * AUTO_THICKNESS_SCREEN_RATIO
-              // Convert screen thickness to image coordinates (smaller when zoomed in)
-              const targetImageThickness = targetScreenThickness / zoomPan.scale
-              const dynamicThickness = getDynamicThickness(imageSize.width, imageSize.height, targetImageThickness)
-              setLineThickness(dynamicThickness)
-              drawing.startDrawing(coords, dynamicThickness)
-            } else {
-              drawing.startDrawing(coords)
-            }
-          } else {
-            drawing.startDrawing(coords)
-          }
+          const dynamicThickness = calculateDynamicThickness()
+          setLineThickness(dynamicThickness)
+          drawing.startDrawing(coords, dynamicThickness)
         }
       }, LONG_PRESS_DURATION)
       
@@ -165,32 +165,15 @@ export default function ImageEditor() {
     const onLongPress = () => {
       const coords = zoomPan.getCanvasCoordinates(touchCoords.x, touchCoords.y)
       // Calculate dynamic thickness for long press
-      let dynamicThickness = lineThickness
-      if (imageSize.width > 0) {
-        const container = containerRef.current
-        if (container) {
-          const screenWidth = container.clientWidth
-          const targetScreenThickness = screenWidth * AUTO_THICKNESS_SCREEN_RATIO
-          const targetImageThickness = targetScreenThickness / zoomPan.scale
-          dynamicThickness = getDynamicThickness(imageSize.width, imageSize.height, targetImageThickness)
-          setLineThickness(dynamicThickness)
-        }
-      }
+      const dynamicThickness = calculateDynamicThickness()
+      setLineThickness(dynamicThickness)
       drawing.startDrawing(coords, dynamicThickness)
     }
     
     const onAdjustMode = () => {
       // Calculate dynamic thickness when entering adjust mode
-      if (imageSize.width > 0) {
-        const container = containerRef.current
-        if (container) {
-          const screenWidth = container.clientWidth
-          const targetScreenThickness = screenWidth * AUTO_THICKNESS_SCREEN_RATIO
-          const targetImageThickness = targetScreenThickness / zoomPan.scale
-          const dynamicThickness = getDynamicThickness(imageSize.width, imageSize.height, targetImageThickness)
-          setLineThickness(dynamicThickness)
-        }
-      }
+      const dynamicThickness = calculateDynamicThickness()
+      setLineThickness(dynamicThickness)
       // Use screen coordinates for loupe display
       drawing.startAdjustMode(touchCoords)
     }
@@ -198,19 +181,8 @@ export default function ImageEditor() {
     const onDrawMode = () => {
       const coords = zoomPan.getCanvasCoordinates(touchCoords.x, touchCoords.y)
       // Calculate dynamic thickness based on current viewport
-      let dynamicThickness = lineThickness
-      if (imageSize.width > 0) {
-        // Calculate screen width (viewport width * 3% for target thickness)
-        const container = containerRef.current
-        if (container) {
-          const screenWidth = container.clientWidth
-          const targetScreenThickness = screenWidth * AUTO_THICKNESS_SCREEN_RATIO
-          // Convert screen thickness to image coordinates (smaller when zoomed in)
-          const targetImageThickness = targetScreenThickness / zoomPan.scale
-          dynamicThickness = getDynamicThickness(imageSize.width, imageSize.height, targetImageThickness)
-          setLineThickness(dynamicThickness)
-        }
-      }
+      const dynamicThickness = calculateDynamicThickness()
+      setLineThickness(dynamicThickness)
       drawing.startDrawMode()
       drawing.startDrawing(coords, dynamicThickness)
     }
@@ -263,26 +235,10 @@ export default function ImageEditor() {
       const onDrawModeTransition = () => {
         if (drawing.drawingMode === 'adjust') {
           // Calculate dynamic thickness based on current viewport
-          if (imageSize.width > 0) {
-            // Calculate screen width (viewport width / 100 for target thickness)
-            const container = containerRef.current
-            if (container) {
-              const screenWidth = container.clientWidth
-              const targetScreenThickness = screenWidth * AUTO_THICKNESS_SCREEN_RATIO
-              // Convert screen thickness to image coordinates (smaller when zoomed in)
-              const targetImageThickness = targetScreenThickness / zoomPan.scale
-              const dynamicThickness = getDynamicThickness(imageSize.width, imageSize.height, targetImageThickness)
-              setLineThickness(dynamicThickness)
-              drawing.startDrawMode()
-              drawing.startDrawing(coords, dynamicThickness)
-            } else {
-              drawing.startDrawMode()
-              drawing.startDrawing(coords)
-            }
-          } else {
-            drawing.startDrawMode()
-            drawing.startDrawing(coords)
-          }
+          const dynamicThickness = calculateDynamicThickness()
+          setLineThickness(dynamicThickness)
+          drawing.startDrawMode()
+          drawing.startDrawing(coords, dynamicThickness)
         }
       }
       
