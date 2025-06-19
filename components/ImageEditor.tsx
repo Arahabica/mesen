@@ -401,7 +401,7 @@ export default function ImageEditor() {
             drawingMode={drawing.drawingMode}
             loupeState={drawing.loupeState}
             isZoomInitialized={zoomPan.isInitialized}
-            isAtInitialScale={zoomPan.isAtInitialScale}
+            isAtInitialScale={zoomPan.isAtInitialView}
             getCanvasCoordinates={zoomPan.getCanvasCoordinates}
             onImageLoad={handleImageLoad}
             onMouseDown={handleMouseDown}
