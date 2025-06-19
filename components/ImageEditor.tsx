@@ -347,6 +347,10 @@ export default function ImageEditor() {
     img.src = image
   }, [image, drawing.lines])
 
+  const resetView = useCallback(() => {
+    zoomPan.reset()
+  }, [zoomPan])
+
   const closeImage = useCallback(() => {
     setImage(null)
     drawing.setLines([])
@@ -408,6 +412,7 @@ export default function ImageEditor() {
             onUndo={drawing.undo}
             onDownload={download}
             onClose={closeImage}
+            onResetView={resetView}
           />
         </div>
       )}

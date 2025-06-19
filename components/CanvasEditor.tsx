@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react'
-import { X, RotateCcw, Download } from 'lucide-react'
+import { X, RotateCcw, Download, Expand } from 'lucide-react'
 import { Line, LoupeState, DrawingMode } from '@/types/editor'
 import Loupe from './Loupe'
 
@@ -25,6 +25,7 @@ interface CanvasEditorProps {
   onUndo: () => void
   onDownload: () => void
   onClose: () => void
+  onResetView: () => void
 }
 
 export interface CanvasEditorRef {
@@ -52,7 +53,8 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   onTouchEnd,
   onUndo,
   onDownload,
-  onClose
+  onClose,
+  onResetView
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const baseCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -215,6 +217,13 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           aria-label="ダウンロード"
         >
           <Download size={24} />
+        </button>
+        <button
+          onClick={onResetView}
+          className="w-12 h-12 bg-gray-700 text-gray-300 rounded-full flex items-center justify-center hover:bg-gray-600 transition-colors"
+          aria-label="表示をリセット"
+        >
+          <Expand size={24} />
         </button>
       </div>
       
