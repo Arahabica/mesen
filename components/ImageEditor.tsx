@@ -348,7 +348,7 @@ export default function ImageEditor() {
   }, [image, drawing.lines])
 
   const resetView = useCallback(() => {
-    zoomPan.reset()
+    zoomPan.resetWithAnimation()
   }, [zoomPan])
 
   const closeImage = useCallback(() => {

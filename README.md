@@ -157,10 +157,9 @@ export const AUTO_THICKNESS_SCREEN_RATIO = 0.03           // 自動太さ計算�
 export const ADJUST_MODE_DELAY = 200                       // 調整モード開始時間（ms）
 export const DRAW_MODE_DELAY = 1000                        // 描画モード開始時間（ms）
 export const MAX_SCALE = 5                                 // 最大ズーム倍率
-export const MIN_SCALE = 0.1                               // 最小ズーム倍率
 export const CLICK_DISTANCE_THRESHOLD = 5                  // クリック判定距離（px）
 export const DOUBLE_TAP_ZOOM_FACTOR = 2.5                  // ダブルタップ時のズーム倍率
-export const DOUBLE_TAP_ANIMATION_DURATION = 300           // ダブルタップアニメーション時間（ms）
+export const DOUBLE_TAP_ANIMATION_DURATION = 200           // ダブルタップアニメーション時間（ms）
 export const LINE_HIT_EXPANSION = 25                       // 線のタップ判定拡張範囲（px）
 export const LINE_ZOOM_EXCLUSION_RADIUS = 100              // 線の周囲でズームを無効化する範囲（px）
 ```

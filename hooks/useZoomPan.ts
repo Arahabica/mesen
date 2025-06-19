@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Position, ImageSize } from '@/types/editor'
-import { MIN_SCALE, MAX_SCALE, DOUBLE_TAP_ZOOM_FACTOR, DOUBLE_TAP_ANIMATION_DURATION } from '@/constants/editor'
+import { MAX_SCALE, DOUBLE_TAP_ZOOM_FACTOR, DOUBLE_TAP_ANIMATION_DURATION } from '@/constants/editor'
+
+const DEFAULT_MIN_SCALE = 0.1
 
 // Easing function for smooth animation
 const easeOutCubic = (t: number): number => {
@@ -74,7 +76,8 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
     requestAnimationFrame(() => {
       const currentScale = scaleRef.current
       const currentPosition = positionRef.current
-      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, currentScale * scaleFactor))
+      const minScale = isInitialized ? initialScaleRef.current : DEFAULT_MIN_SCALE
+      const newScale = Math.max(minScale, Math.min(MAX_SCALE, currentScale * scaleFactor))
       
       // Calculate the position on the canvas before zoom
       const canvasX = (mouseX - currentPosition.x) / currentScale
@@ -89,13 +92,14 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
       setScale(newScale)
       setPosition(newPosition)
     })
-  }, [containerRef])
+  }, [containerRef, isInitialized])
 
   const handlePinchZoom = useCallback((newScale: number, centerX: number, centerY: number) => {
     if (!containerRef.current) return
     
     requestAnimationFrame(() => {
-      const clampedScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale))
+      const minScale = isInitialized ? initialScaleRef.current : DEFAULT_MIN_SCALE
+      const clampedScale = Math.max(minScale, Math.min(MAX_SCALE, newScale))
       const rect = containerRef.current!.getBoundingClientRect()
       const pinchX = centerX - rect.left
       const pinchY = centerY - rect.top
@@ -116,7 +120,7 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
       setScale(clampedScale)
       setPosition(newPosition)
     })
-  }, [containerRef])
+  }, [containerRef, isInitialized])
 
   // Initialize zoom to fit image
   useEffect(() => {
@@ -203,6 +207,13 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
     animationRef.current = requestAnimationFrame(animate)
   }, [])
 
+  const resetWithAnimation = useCallback(() => {
+    if (isInitialized && !isAnimating) {
+      // Animate to initial scale and position
+      animateToTarget(initialScaleRef.current, initialPositionRef.current)
+    }
+  }, [isInitialized, isAnimating, animateToTarget])
+
   const handleDoubleTap = useCallback((clientX: number, clientY: number) => {
     if (!containerRef.current || isAnimating) return
     
@@ -254,6 +265,7 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
     handlePinchZoom,
     handleDoubleTap,
     pan,
-    reset
+    reset,
+    resetWithAnimation
   }
 }
