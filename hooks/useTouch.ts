@@ -19,6 +19,11 @@ export function useTouch() {
   const gestureTypeRef = useRef<'none' | 'pinch' | 'pan'>('none')
   const initialPinchDistanceRef = useRef<number | null>(null)
   const initialPinchCenterRef = useRef<Position | null>(null)
+  
+  // Double-tap detection
+  const lastTapTimeRef = useRef<number>(0)
+  const lastTapPositionRef = useRef<Position | null>(null)
+  const doubleTapTimerRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const getTouchDistance = (touch1: React.Touch, touch2: React.Touch) => {
     return Math.sqrt(
@@ -277,6 +282,36 @@ export function useTouch() {
     return Date.now() - touchStartTimeRef.current < LONG_PRESS_DURATION && !hasMovedRef.current
   }, [])
 
+  const checkDoubleTap = useCallback((position: Position) => {
+    const now = Date.now()
+    const timeDiff = now - lastTapTimeRef.current
+    
+    // Check if this is a potential double tap (within 300ms of last tap)
+    if (lastTapPositionRef.current && timeDiff < 300) {
+      const distance = Math.sqrt(
+        Math.pow(position.x - lastTapPositionRef.current.x, 2) +
+        Math.pow(position.y - lastTapPositionRef.current.y, 2)
+      )
+      
+      // If taps are close enough, it's a double tap
+      if (distance < 30) {
+        // Clear the timer to prevent single tap callback
+        if (doubleTapTimerRef.current) {
+          clearTimeout(doubleTapTimerRef.current)
+          doubleTapTimerRef.current = undefined
+        }
+        lastTapTimeRef.current = 0
+        lastTapPositionRef.current = null
+        return true
+      }
+    }
+    
+    // Record this tap for next time
+    lastTapTimeRef.current = now
+    lastTapPositionRef.current = position
+    return false
+  }, [])
+
   const cleanup = useCallback(() => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current)
@@ -286,6 +321,9 @@ export function useTouch() {
     }
     if (drawModeTimerRef.current) {
       clearTimeout(drawModeTimerRef.current)
+    }
+    if (doubleTapTimerRef.current) {
+      clearTimeout(doubleTapTimerRef.current)
     }
   }, [])
 
@@ -301,6 +339,7 @@ export function useTouch() {
     getPinchCenter,
     getPinchCenterDelta,
     isQuickTap,
+    checkDoubleTap,
     cleanup
   }
 }

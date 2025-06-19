@@ -2,12 +2,18 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { Position, ImageSize } from '@/types/editor'
 import { MIN_SCALE, MAX_SCALE } from '@/constants/editor'
 
+const DOUBLE_TAP_ZOOM_FACTOR = 1.8
+
 export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<HTMLDivElement | null>) {
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 })
   const [isInitialized, setIsInitialized] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 })
+  
+  // Store initial scale and position for double-tap reset
+  const initialScaleRef = useRef(1)
+  const initialPositionRef = useRef<Position>({ x: 0, y: 0 })
   
   // Use refs to access current values in callbacks
   const scaleRef = useRef(scale)
@@ -121,11 +127,17 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
         initialScale = containerRect.height / imageSize.height
       }
       
-      setScale(initialScale)
-      setPosition({
+      const initialPos = {
         x: (containerRect.width - imageSize.width * initialScale) / 2,
         y: (containerRect.height - imageSize.height * initialScale) / 2
-      })
+      }
+      
+      // Store initial values for double-tap reset
+      initialScaleRef.current = initialScale
+      initialPositionRef.current = initialPos
+      
+      setScale(initialScale)
+      setPosition(initialPos)
       setIsInitialized(true)
     }
   }, [imageSize, containerRef, isInitialized])
@@ -145,6 +157,41 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
     setIsInitialized(false)
   }, [])
 
+  const handleDoubleTap = useCallback((clientX: number, clientY: number) => {
+    if (!containerRef.current) return
+    
+    const currentScale = scaleRef.current
+    const initialScale = initialScaleRef.current
+    
+    // Check if we're at initial scale (with small tolerance)
+    const isAtInitialScale = Math.abs(currentScale - initialScale) < 0.01
+    
+    if (isAtInitialScale) {
+      // Zoom in to DOUBLE_TAP_ZOOM_FACTOR x the initial scale
+      const targetScale = initialScale * DOUBLE_TAP_ZOOM_FACTOR
+      const rect = containerRef.current.getBoundingClientRect()
+      const tapX = clientX - rect.left
+      const tapY = clientY - rect.top
+      
+      // Calculate the position on the canvas before zoom
+      const canvasX = (tapX - positionRef.current.x) / currentScale
+      const canvasY = (tapY - positionRef.current.y) / currentScale
+      
+      // Calculate new position to keep the tap point at the center
+      const newPosition = {
+        x: tapX - canvasX * targetScale,
+        y: tapY - canvasY * targetScale
+      }
+      
+      setScale(targetScale)
+      setPosition(newPosition)
+    } else {
+      // Reset to initial scale and position
+      setScale(initialScale)
+      setPosition(initialPositionRef.current)
+    }
+  }, [containerRef])
+
   return {
     scale,
     position,
@@ -156,6 +203,7 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
     stopDragging,
     handleWheel,
     handlePinchZoom,
+    handleDoubleTap,
     pan,
     reset
   }

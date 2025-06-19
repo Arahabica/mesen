@@ -15,7 +15,8 @@
       "Bash(rm:*)",
       "Bash(npx eslint:*)",
       "Bash(npm run lint)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }

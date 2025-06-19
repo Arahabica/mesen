@@ -267,11 +267,20 @@ export default function ImageEditor() {
     touch.endTouch(e.touches)
     
     if (touch.isQuickTap() && e.changedTouches[0] && !touch.isPinching) {
-      const coords = zoomPan.getCanvasCoordinates(e.changedTouches[0].clientX, e.changedTouches[0].clientY)
-      const clickedLineIndex = drawing.findLineAtPoint(coords)
+      const tapX = e.changedTouches[0].clientX
+      const tapY = e.changedTouches[0].clientY
       
-      if (clickedLineIndex !== -1) {
-        drawing.changeLineThickness(clickedLineIndex)
+      // Check for double tap
+      if (touch.checkDoubleTap({ x: tapX, y: tapY })) {
+        zoomPan.handleDoubleTap(tapX, tapY)
+      } else {
+        // Single tap logic
+        const coords = zoomPan.getCanvasCoordinates(tapX, tapY)
+        const clickedLineIndex = drawing.findLineAtPoint(coords)
+        
+        if (clickedLineIndex !== -1) {
+          drawing.changeLineThickness(clickedLineIndex)
+        }
       }
     }
     
