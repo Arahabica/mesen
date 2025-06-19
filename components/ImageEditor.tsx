@@ -7,7 +7,7 @@ import { useDrawing } from '@/hooks/useDrawing'
 import { useZoomPan } from '@/hooks/useZoomPan'
 import { useTouch } from '@/hooks/useTouch'
 import { ImageSize } from '@/types/editor'
-import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness } from '@/constants/editor'
+import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, AUTO_THICKNESS_SCREEN_RATIO } from '@/constants/editor'
 
 export default function ImageEditor() {
   const [image, setImage] = useState<string | null>(null)
@@ -64,11 +64,11 @@ export default function ImageEditor() {
         if (!mouseHasMovedRef.current) {
           // Calculate dynamic thickness based on current viewport
           if (imageSize.width > 0) {
-            // Calculate screen width (viewport width / 100 for target thickness)
+            // Calculate screen width (viewport width * 3% for target thickness)
             const container = containerRef.current
             if (container) {
               const screenWidth = container.clientWidth
-              const targetScreenThickness = screenWidth / 100
+              const targetScreenThickness = screenWidth * AUTO_THICKNESS_SCREEN_RATIO
               // Convert screen thickness to image coordinates (smaller when zoomed in)
               const targetImageThickness = targetScreenThickness / zoomPan.scale
               const dynamicThickness = getDynamicThickness(imageSize.width, imageSize.height, targetImageThickness)
@@ -200,11 +200,11 @@ export default function ImageEditor() {
       // Calculate dynamic thickness based on current viewport
       let dynamicThickness = lineThickness
       if (imageSize.width > 0) {
-        // Calculate screen width (viewport width / 100 for target thickness)
+        // Calculate screen width (viewport width * 3% for target thickness)
         const container = containerRef.current
         if (container) {
           const screenWidth = container.clientWidth
-          const targetScreenThickness = screenWidth / 100
+          const targetScreenThickness = screenWidth * AUTO_THICKNESS_SCREEN_RATIO
           // Convert screen thickness to image coordinates (smaller when zoomed in)
           const targetImageThickness = targetScreenThickness / zoomPan.scale
           dynamicThickness = getDynamicThickness(imageSize.width, imageSize.height, targetImageThickness)
@@ -268,7 +268,7 @@ export default function ImageEditor() {
             const container = containerRef.current
             if (container) {
               const screenWidth = container.clientWidth
-              const targetScreenThickness = screenWidth / 100
+              const targetScreenThickness = screenWidth * AUTO_THICKNESS_SCREEN_RATIO
               // Convert screen thickness to image coordinates (smaller when zoomed in)
               const targetImageThickness = targetScreenThickness / zoomPan.scale
               const dynamicThickness = getDynamicThickness(imageSize.width, imageSize.height, targetImageThickness)

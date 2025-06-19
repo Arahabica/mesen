@@ -37,3 +37,6 @@ export const MIN_SCALE = 0.1
 export const CLICK_DISTANCE_THRESHOLD = 5
 export const PINCH_DISTANCE_THRESHOLD = 7   // ピンチ/パン判定の距離変化閾値
 export const PINCH_CENTER_THRESHOLD = 12    // ピンチ/パン判定の中心移動閾値
+
+// 自動太さ計算用の画面幅に対する比率（3%）
+export const AUTO_THICKNESS_SCREEN_RATIO = 0.03

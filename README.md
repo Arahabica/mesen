@@ -13,7 +13,7 @@
 - 📸 **画像アップロード**: ローカルから画像を選択
 - 🔍 **ルーペ機能**: モバイル環境での精密な描画をサポート
 - ✏️ **線の描画**: 直感的な操作で黒い線を描画
-- 🔧 **線の太さ調整**: 6段階の太さ（2px, 5px, 10px, 20px, 40px, 60px）
+- 🔧 **線の太さ調整**: 画像サイズに応じた6段階の太さ（画像最大辺の0.3%, 0.5%, 1%, 2%, 5%, 10%）
 - 📏 **拡大・縮小**: マウスホイールやピンチ操作で画像をズーム
 - 🚀 **ドラッグ移動**: 画像の位置を自由に調整
 - ↩️ **元に戻す**: 描画した線を1つずつ取り消し
@@ -70,6 +70,7 @@
 - **中心表示**: 描画する線の太さと同じ大きさの円
   - 調整モード: 半透明の黒
   - 描画モード: 不透明の黒（移行時にスケールアニメーション）
+- **線の太さ**: 画面幅の3%に基づいて自動的に最適な太さを選択（ズーム率に応じて調整）
 
 #### カウントダウンインジケーター
 - 調整モード中、静止開始から0.5秒後に表示開始
@@ -137,12 +138,13 @@ mesen-app/
 `constants/editor.ts`で以下の値を調整可能：
 
 ```typescript
-export const THICKNESS_OPTIONS = [2, 5, 10, 20, 40, 60]  // 線の太さ選択肢
-export const ADJUST_MODE_DELAY = 200                      // 調整モード開始時間（ms）
-export const DRAW_MODE_DELAY = 1000                       // 描画モード開始時間（ms）
-export const MAX_SCALE = 5                                // 最大ズーム倍率
-export const MIN_SCALE = 0.1                              // 最小ズーム倍率
-export const CLICK_DISTANCE_THRESHOLD = 5                 // クリック判定距離（px）
+export const THICKNESS_RATIOS = [0.003, 0.005, 0.01, 0.02, 0.05, 0.1]  // 画像最大辺に対する太さの比率
+export const AUTO_THICKNESS_SCREEN_RATIO = 0.03           // 自動太さ計算用の画面幅に対する比率（3%）
+export const ADJUST_MODE_DELAY = 200                       // 調整モード開始時間（ms）
+export const DRAW_MODE_DELAY = 1000                        // 描画モード開始時間（ms）
+export const MAX_SCALE = 5                                 // 最大ズーム倍率
+export const MIN_SCALE = 0.1                               // 最小ズーム倍率
+export const CLICK_DISTANCE_THRESHOLD = 5                  // クリック判定距離（px）
 ```
 
 ## セットアップ
