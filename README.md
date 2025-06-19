@@ -153,13 +153,8 @@ export const DRAW_MODE_DELAY = 1000                        // 描画モード開
 export const MAX_SCALE = 5                                 // 最大ズーム倍率
 export const MIN_SCALE = 0.1                               // 最小ズーム倍率
 export const CLICK_DISTANCE_THRESHOLD = 5                  // クリック判定距離（px）
-```
-
-`hooks/useZoomPan.ts`で以下の値を調整可能：
-
-```typescript
-const DOUBLE_TAP_ZOOM_FACTOR = 2.5                         // ダブルタップ時のズーム倍率
-const ANIMATION_DURATION = 300                             // ズームアニメーション時間（ms）
+export const DOUBLE_TAP_ZOOM_FACTOR = 2.5                  // ダブルタップ時のズーム倍率
+export const DOUBLE_TAP_ANIMATION_DURATION = 300           // ダブルタップアニメーション時間（ms）
 ```
 
 ## セットアップ

@@ -40,3 +40,7 @@ export const PINCH_CENTER_THRESHOLD = 12    // ピンチ/パン判定の中心�
 
 // 自動太さ計算用の画面幅に対する比率（3%）
 export const AUTO_THICKNESS_SCREEN_RATIO = 0.03
+
+// ダブルタップズーム設定
+export const DOUBLE_TAP_ZOOM_FACTOR = 2.5   // ダブルタップ時のズーム倍率
+export const DOUBLE_TAP_ANIMATION_DURATION = 300  // ダブルタップアニメーション時間（ms）
