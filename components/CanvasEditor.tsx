@@ -220,7 +220,12 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
         </button>
         <button
           onClick={onDownload}
-          className="w-12 h-12 bg-gray-700 text-gray-300 rounded-full flex items-center justify-center hover:bg-gray-600 transition-colors"
+          disabled={lines.length === 0}
+          className={`w-12 h-12 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all ${
+            lines.length === 0 
+              ? 'opacity-40 cursor-not-allowed' 
+              : 'opacity-100 hover:bg-gray-600'
+          }`}
           aria-label="ダウンロード"
         >
           <Download size={24} />
