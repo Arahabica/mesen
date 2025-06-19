@@ -52,9 +52,26 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
   }
 
   const findLineAtPoint = useCallback((point: Position) => {
-    return lines.findIndex(line => {
+    let closestLineIndex = -1
+    let closestDistance = Infinity
+    
+    lines.forEach((line, index) => {
       const distToLine = distanceToLineSegment(point, line.start, line.end)
-      return distToLine < line.thickness / 2 + 5
+      const hitRadius = line.thickness / 2 + 10
+      
+      if (distToLine < hitRadius && distToLine < closestDistance) {
+        closestDistance = distToLine
+        closestLineIndex = index
+      }
+    })
+    
+    return closestLineIndex
+  }, [lines])
+
+  const isNearLine = useCallback((point: Position, threshold: number = 30) => {
+    return lines.some(line => {
+      const distToLine = distanceToLineSegment(point, line.start, line.end)
+      return distToLine <= threshold
     })
   }, [lines])
 
@@ -202,6 +219,7 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
     drawingMode,
     loupeState,
     findLineAtPoint,
+    isNearLine,
     startDrawing,
     draw,
     stopDrawing,

@@ -279,17 +279,18 @@ export default function ImageEditor() {
     if (touch.isQuickTap() && e.changedTouches[0] && !touch.isPinching) {
       const tapX = e.changedTouches[0].clientX
       const tapY = e.changedTouches[0].clientY
+      const coords = zoomPan.getCanvasCoordinates(tapX, tapY)
+      const clickedLineIndex = drawing.findLineAtPoint(coords)
       
-      // Check for double tap
-      if (touch.checkDoubleTap({ x: tapX, y: tapY })) {
-        zoomPan.handleDoubleTap(tapX, tapY)
+      if (clickedLineIndex !== -1) {
+        // If tapped on a line, change thickness (no double tap zoom)
+        drawing.changeLineThickness(clickedLineIndex)
+      } else if (drawing.isNearLine(coords, 60)) {
+        // If near a line (within 60px), do nothing (no zoom, no thickness change)
       } else {
-        // Single tap logic
-        const coords = zoomPan.getCanvasCoordinates(tapX, tapY)
-        const clickedLineIndex = drawing.findLineAtPoint(coords)
-        
-        if (clickedLineIndex !== -1) {
-          drawing.changeLineThickness(clickedLineIndex)
+        // If not near any line, check for double tap for zoom
+        if (touch.checkDoubleTap({ x: tapX, y: tapY })) {
+          zoomPan.handleDoubleTap(tapX, tapY)
         }
       }
     }
