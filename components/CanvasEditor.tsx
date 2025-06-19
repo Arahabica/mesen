@@ -55,6 +55,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   onClose
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const baseCanvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useImperativeHandle(ref, () => ({
@@ -64,23 +65,34 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   // State to track if image is loaded
   const [isImageLoaded, setIsImageLoaded] = useState(false)
 
-  // Handle image loading only once
+  // Handle image loading and create base canvas
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !image) return
+    const baseCanvas = baseCanvasRef.current
+    if (!canvas || !baseCanvas || !image) return
     
     setIsImageLoaded(false)
     const img = new Image()
     img.onload = () => {
+      // Set up both canvases with same dimensions
       canvas.width = img.width
       canvas.height = img.height
+      baseCanvas.width = img.width
+      baseCanvas.height = img.height
       onImageLoad(img.width, img.height)
       
-      // Draw the initial image
+      // Draw image to base canvas (once only)
+      const baseCtx = baseCanvas.getContext('2d')
+      if (baseCtx) {
+        baseCtx.clearRect(0, 0, baseCanvas.width, baseCanvas.height)
+        baseCtx.drawImage(img, 0, 0)
+      }
+      
+      // Copy base canvas to main canvas
       const ctx = canvas.getContext('2d')
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(img, 0, 0)
+        ctx.drawImage(baseCanvas, 0, 0)
       }
       
       setIsImageLoaded(true)
@@ -88,36 +100,70 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
     img.src = image
   }, [image, onImageLoad])
 
-  // Handle canvas redraw for lines only
+  // Handle redraw for confirmed lines only
   useEffect(() => {
     if (!isImageLoaded) return
     
     const canvas = canvasRef.current
-    if (!canvas || !image) return
+    const baseCanvas = baseCanvasRef.current
+    if (!canvas || !baseCanvas) return
     
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     
-    const img = new Image()
-    img.onload = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.drawImage(img, 0, 0)
-      
-      ctx.strokeStyle = 'black'
-      ctx.lineCap = 'round'
-      ctx.lineJoin = 'round'
-      
-      const allLines = currentLine ? [...lines, currentLine] : lines
-      allLines.forEach(line => {
-        ctx.lineWidth = line.thickness
-        ctx.beginPath()
-        ctx.moveTo(line.start.x, line.start.y)
-        ctx.lineTo(line.end.x, line.end.y)
-        ctx.stroke()
-      })
-    }
-    img.src = image
-  }, [image, lines, currentLine, isImageLoaded])
+    // Copy base canvas (image) to main canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(baseCanvas, 0, 0)
+    
+    // Draw only confirmed lines
+    ctx.strokeStyle = 'black'
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    
+    lines.forEach(line => {
+      ctx.lineWidth = line.thickness
+      ctx.beginPath()
+      ctx.moveTo(line.start.x, line.start.y)
+      ctx.lineTo(line.end.x, line.end.y)
+      ctx.stroke()
+    })
+  }, [lines, isImageLoaded])
+
+  // Handle current line drawing (real-time)
+  useEffect(() => {
+    if (!currentLine || !isImageLoaded) return
+    
+    const canvas = canvasRef.current
+    const baseCanvas = baseCanvasRef.current
+    if (!canvas || !baseCanvas) return
+    
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    
+    // Redraw base + confirmed lines
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(baseCanvas, 0, 0)
+    
+    ctx.strokeStyle = 'black'
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    
+    // Draw confirmed lines
+    lines.forEach(line => {
+      ctx.lineWidth = line.thickness
+      ctx.beginPath()
+      ctx.moveTo(line.start.x, line.start.y)
+      ctx.lineTo(line.end.x, line.end.y)
+      ctx.stroke()
+    })
+    
+    // Draw current line
+    ctx.lineWidth = currentLine.thickness
+    ctx.beginPath()
+    ctx.moveTo(currentLine.start.x, currentLine.start.y)
+    ctx.lineTo(currentLine.end.x, currentLine.end.y)
+    ctx.stroke()
+  }, [currentLine, lines, isImageLoaded])
 
   // Vibration feedback for mode transitions
   useEffect(() => {
@@ -195,6 +241,12 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
             opacity: isImageLoaded && isZoomInitialized ? 1 : 0,
             transition: 'opacity 0.2s ease-in-out'
           }}
+        />
+        {/* Hidden base canvas for image caching */}
+        <canvas
+          ref={baseCanvasRef}
+          className="absolute"
+          style={{ display: 'none' }}
         />
         <Loupe
           visible={loupeState.visible}
