@@ -236,12 +236,16 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
     }
   }, [containerRef, isAnimating, animateToTarget])
 
+  // Check if current scale is at initial scale
+  const isAtInitialScale = isInitialized && Math.abs(scale - initialScaleRef.current) < 0.01
+
   return {
     scale,
     position,
     isDragging,
     isInitialized,
     isAnimating,
+    isAtInitialScale,
     getCanvasCoordinates,
     startDragging,
     drag,

@@ -14,6 +14,7 @@ interface CanvasEditorProps {
   drawingMode: DrawingMode
   loupeState: LoupeState
   isZoomInitialized: boolean
+  isAtInitialScale: boolean
   getCanvasCoordinates: (screenX: number, screenY: number) => { x: number; y: number }
   onImageLoad: (width: number, height: number) => void
   onMouseDown: (e: React.MouseEvent) => void
@@ -43,6 +44,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   drawingMode,
   loupeState,
   isZoomInitialized,
+  isAtInitialScale,
   getCanvasCoordinates,
   onImageLoad,
   onMouseDown,
@@ -206,7 +208,12 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 z-10">
         <button
           onClick={onUndo}
-          className="w-12 h-12 bg-gray-700 text-gray-300 rounded-full flex items-center justify-center hover:bg-gray-600 transition-colors"
+          disabled={lines.length === 0}
+          className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
+            lines.length === 0 
+              ? 'bg-gray-800 text-gray-600 cursor-not-allowed' 
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
           aria-label="元に戻す"
         >
           <RotateCcw size={24} />
@@ -220,7 +227,12 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
         </button>
         <button
           onClick={onResetView}
-          className="w-12 h-12 bg-gray-700 text-gray-300 rounded-full flex items-center justify-center hover:bg-gray-600 transition-colors"
+          disabled={isAtInitialScale}
+          className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
+            isAtInitialScale 
+              ? 'bg-gray-800 text-gray-600 cursor-not-allowed' 
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
           aria-label="表示をリセット"
         >
           <Expand size={24} />
