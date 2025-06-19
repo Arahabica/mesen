@@ -209,10 +209,10 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
         <button
           onClick={onUndo}
           disabled={lines.length === 0}
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
+          className={`w-12 h-12 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all ${
             lines.length === 0 
-              ? 'bg-gray-800 text-gray-600 cursor-not-allowed' 
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              ? 'opacity-40 cursor-not-allowed' 
+              : 'opacity-100 hover:bg-gray-600'
           }`}
           aria-label="元に戻す"
         >
@@ -228,10 +228,10 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
         <button
           onClick={onResetView}
           disabled={isAtInitialScale}
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
+          className={`w-12 h-12 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all ${
             isAtInitialScale 
-              ? 'bg-gray-800 text-gray-600 cursor-not-allowed' 
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              ? 'opacity-40 cursor-not-allowed' 
+              : 'opacity-100 hover:bg-gray-600'
           }`}
           aria-label="表示をリセット"
         >
