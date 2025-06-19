@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { Position, ImageSize } from '@/types/editor'
 import { MIN_SCALE, MAX_SCALE } from '@/constants/editor'
 
-const DOUBLE_TAP_ZOOM_FACTOR = 1.8
+const DOUBLE_TAP_ZOOM_FACTOR = 2.5
 const ANIMATION_DURATION = 300 // ms
 
 // Easing function for smooth animation
