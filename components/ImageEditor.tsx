@@ -170,7 +170,7 @@ export default function ImageEditor() {
         const container = containerRef.current
         if (container) {
           const screenWidth = container.clientWidth
-          const targetScreenThickness = screenWidth / 100
+          const targetScreenThickness = screenWidth * AUTO_THICKNESS_SCREEN_RATIO
           const targetImageThickness = targetScreenThickness / zoomPan.scale
           dynamicThickness = getDynamicThickness(imageSize.width, imageSize.height, targetImageThickness)
           setLineThickness(dynamicThickness)
@@ -185,7 +185,7 @@ export default function ImageEditor() {
         const container = containerRef.current
         if (container) {
           const screenWidth = container.clientWidth
-          const targetScreenThickness = screenWidth / 100
+          const targetScreenThickness = screenWidth * AUTO_THICKNESS_SCREEN_RATIO
           const targetImageThickness = targetScreenThickness / zoomPan.scale
           const dynamicThickness = getDynamicThickness(imageSize.width, imageSize.height, targetImageThickness)
           setLineThickness(dynamicThickness)
