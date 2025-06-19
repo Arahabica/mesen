@@ -7,7 +7,7 @@ import { useDrawing } from '@/hooks/useDrawing'
 import { useZoomPan } from '@/hooks/useZoomPan'
 import { useTouch } from '@/hooks/useTouch'
 import { ImageSize } from '@/types/editor'
-import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, AUTO_THICKNESS_SCREEN_RATIO } from '@/constants/editor'
+import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS } from '@/constants/editor'
 
 export default function ImageEditor() {
   const [image, setImage] = useState<string | null>(null)
@@ -285,8 +285,8 @@ export default function ImageEditor() {
       if (clickedLineIndex !== -1) {
         // If tapped on a line, change thickness (no double tap zoom)
         drawing.changeLineThickness(clickedLineIndex)
-      } else if (drawing.isNearLine(coords, 60)) {
-        // If near a line (within 60px), do nothing (no zoom, no thickness change)
+      } else if (drawing.isNearLine(coords, LINE_ZOOM_EXCLUSION_RADIUS)) {
+        // If near a line (within exclusion radius), do nothing (no zoom, no thickness change)
       } else {
         // If not near any line, check for double tap for zoom
         if (touch.checkDoubleTap({ x: tapX, y: tapY })) {

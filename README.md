@@ -96,6 +96,12 @@
 - **画像保存**: ダウンロードボタンで編集後の画像を保存
 - **編集終了**: 右上の「×」ボタンで編集を終了
 
+### スマートタッチ機能
+- **線の上でのタップ**: 線の太さを変更（ダブルタップズームは無効）
+- **線の近く（60px以内）でのタップ**: 誤操作防止のため何も起こらない
+- **線から離れた場所でのダブルタップ**: ズーム機能が動作
+- **複数の線が重なる場合**: 最も近い線が自動選択される
+
 ## 技術仕様
 
 ### フレームワーク・言語
@@ -155,6 +161,8 @@ export const MIN_SCALE = 0.1                               // 最小ズーム倍
 export const CLICK_DISTANCE_THRESHOLD = 5                  // クリック判定距離（px）
 export const DOUBLE_TAP_ZOOM_FACTOR = 2.5                  // ダブルタップ時のズーム倍率
 export const DOUBLE_TAP_ANIMATION_DURATION = 300           // ダブルタップアニメーション時間（ms）
+export const LINE_HIT_EXPANSION = 10                       // 線のタップ判定拡張範囲（px）
+export const LINE_ZOOM_EXCLUSION_RADIUS = 60               // 線の周囲でズームを無効化する範囲（px）
 ```
 
 ## セットアップ

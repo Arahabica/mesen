@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { Line, Position, DrawingMode, LoupeState } from '@/types/editor'
-import { getThicknessOptions, CLICK_DISTANCE_THRESHOLD } from '@/constants/editor'
+import { getThicknessOptions, CLICK_DISTANCE_THRESHOLD, LINE_HIT_EXPANSION } from '@/constants/editor'
 import { findBestLoupePosition } from '@/utils/loupePosition'
 
 export function useDrawing(lineThickness: number, imageWidth: number, imageHeight: number) {
@@ -57,7 +57,7 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
     
     lines.forEach((line, index) => {
       const distToLine = distanceToLineSegment(point, line.start, line.end)
-      const hitRadius = line.thickness / 2 + 10
+      const hitRadius = line.thickness / 2 + LINE_HIT_EXPANSION
       
       if (distToLine < hitRadius && distToLine < closestDistance) {
         closestDistance = distToLine

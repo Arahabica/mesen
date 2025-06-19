@@ -44,3 +44,7 @@ export const AUTO_THICKNESS_SCREEN_RATIO = 0.03
 // ダブルタップズーム設定
 export const DOUBLE_TAP_ZOOM_FACTOR = 2.5   // ダブルタップ時のズーム倍率
 export const DOUBLE_TAP_ANIMATION_DURATION = 300  // ダブルタップアニメーション時間（ms）
+
+// 線の判定範囲設定
+export const LINE_HIT_EXPANSION = 10        // 線のタップ判定拡張範囲（px）
+export const LINE_ZOOM_EXCLUSION_RADIUS = 60  // 線の周囲でズームを無効化する範囲（px）
