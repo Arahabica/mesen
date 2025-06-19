@@ -143,6 +143,11 @@ export default function ImageEditor() {
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
     
+    // Disable interactions during animation
+    if (zoomPan.isAnimating) {
+      return
+    }
+    
     // Clear any existing modes when starting new touch
     drawing.resetMode()
     
@@ -204,6 +209,11 @@ export default function ImageEditor() {
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     // e.preventDefault()
+    
+    // Disable interactions during animation
+    if (zoomPan.isAnimating) {
+      return
+    }
     
     // Handle pinch zoom and pan - this takes priority
     if (touch.isPinching) {

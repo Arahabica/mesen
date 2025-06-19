@@ -3,6 +3,12 @@ import { Position, ImageSize } from '@/types/editor'
 import { MIN_SCALE, MAX_SCALE } from '@/constants/editor'
 
 const DOUBLE_TAP_ZOOM_FACTOR = 1.8
+const ANIMATION_DURATION = 300 // ms
+
+// Easing function for smooth animation
+const easeOutCubic = (t: number): number => {
+  return 1 - Math.pow(1 - t, 3)
+}
 
 export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<HTMLDivElement | null>) {
   const [scale, setScale] = useState(1)
@@ -10,6 +16,7 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
   const [isInitialized, setIsInitialized] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 })
+  const [isAnimating, setIsAnimating] = useState(false)
   
   // Store initial scale and position for double-tap reset
   const initialScaleRef = useRef(1)
@@ -18,6 +25,7 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
   // Use refs to access current values in callbacks
   const scaleRef = useRef(scale)
   const positionRef = useRef(position)
+  const animationRef = useRef<number | null>(null)
   
   useEffect(() => {
     scaleRef.current = scale
@@ -152,13 +160,54 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
   }, [])
 
   const reset = useCallback(() => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current)
+      animationRef.current = null
+    }
     setScale(1)
     setPosition({ x: 0, y: 0 })
     setIsInitialized(false)
+    setIsAnimating(false)
+  }, [])
+
+  const animateToTarget = useCallback((targetScale: number, targetPosition: Position) => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current)
+    }
+    
+    const startScale = scaleRef.current
+    const startPosition = positionRef.current
+    const startTime = Date.now()
+    
+    setIsAnimating(true)
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime
+      const progress = Math.min(elapsed / ANIMATION_DURATION, 1)
+      const easedProgress = easeOutCubic(progress)
+      
+      const currentScale = startScale + (targetScale - startScale) * easedProgress
+      const currentPosition = {
+        x: startPosition.x + (targetPosition.x - startPosition.x) * easedProgress,
+        y: startPosition.y + (targetPosition.y - startPosition.y) * easedProgress
+      }
+      
+      setScale(currentScale)
+      setPosition(currentPosition)
+      
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate)
+      } else {
+        setIsAnimating(false)
+        animationRef.current = null
+      }
+    }
+    
+    animationRef.current = requestAnimationFrame(animate)
   }, [])
 
   const handleDoubleTap = useCallback((clientX: number, clientY: number) => {
-    if (!containerRef.current) return
+    if (!containerRef.current || isAnimating) return
     
     const currentScale = scaleRef.current
     const initialScale = initialScaleRef.current
@@ -178,25 +227,24 @@ export function useZoomPan(imageSize: ImageSize, containerRef: React.RefObject<H
       const canvasY = (tapY - positionRef.current.y) / currentScale
       
       // Calculate new position to keep the tap point at the center
-      const newPosition = {
+      const targetPosition = {
         x: tapX - canvasX * targetScale,
         y: tapY - canvasY * targetScale
       }
       
-      setScale(targetScale)
-      setPosition(newPosition)
+      animateToTarget(targetScale, targetPosition)
     } else {
       // Reset to initial scale and position
-      setScale(initialScale)
-      setPosition(initialPositionRef.current)
+      animateToTarget(initialScale, initialPositionRef.current)
     }
-  }, [containerRef])
+  }, [containerRef, isAnimating, animateToTarget])
 
   return {
     scale,
     position,
     isDragging,
     isInitialized,
+    isAnimating,
     getCanvasCoordinates,
     startDragging,
     drag,
