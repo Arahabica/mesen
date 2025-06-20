@@ -152,8 +152,8 @@ mesen-app/
 `constants/editor.ts`で以下の値を調整可能：
 
 ```typescript
-export const THICKNESS_RATIOS = [0.003, 0.005, 0.01, 0.02, 0.05, 0.1]  // 画像最大辺に対する太さの比率
-export const AUTO_THICKNESS_SCREEN_RATIO = 0.03           // 自動太さ計算用の画面幅に対する比率（3%）
+export const THICKNESS_RATIOS = [0.002, 0.005, 0.01, 0.02, 0.05, 0.1]  // 画像最大辺に対する太さの比率
+export const AUTO_THICKNESS_SCREEN_RATIO = 0.02           // 自動太さ計算用の画面幅に対する比率（2%）
 export const ADJUST_MODE_DELAY = 200                       // 調整モード開始時間（ms）
 export const DRAW_MODE_DELAY = 1000                        // 描画モード開始時間（ms）
 export const MAX_SCALE = 5                                 // 最大ズーム倍率

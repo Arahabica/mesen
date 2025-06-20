@@ -1,4 +1,4 @@
-export const THICKNESS_RATIOS = [0.003, 0.005, 0.01, 0.02, 0.05, 0.1]
+export const THICKNESS_RATIOS = [0.002, 0.005, 0.01, 0.02, 0.05, 0.1]
 export const DEFAULT_THICKNESS_RATIO = 0.01
 
 export function getThicknessOptions(imageWidth: number, imageHeight: number): number[] {
@@ -37,8 +37,8 @@ export const CLICK_DISTANCE_THRESHOLD = 5
 export const PINCH_DISTANCE_THRESHOLD = 7   // ピンチ/パン判定の距離変化閾値
 export const PINCH_CENTER_THRESHOLD = 12    // ピンチ/パン判定の中心移動閾値
 
-// 自動太さ計算用の画面幅に対する比率（3%）
-export const AUTO_THICKNESS_SCREEN_RATIO = 0.03
+// 自動太さ計算用の画面幅に対する比率（2%）
+export const AUTO_THICKNESS_SCREEN_RATIO = 0.02
 
 // ダブルタップズーム設定
 export const DOUBLE_TAP_ZOOM_FACTOR = 2.5   // ダブルタップ時のズーム倍率

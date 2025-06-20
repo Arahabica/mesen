@@ -16,6 +16,7 @@ export default function ImageEditor() {
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
   const [showLanding, setShowLanding] = useState(true)
   const [canvasOpacity, setCanvasOpacity] = useState(0)
+  const [triggerTooltipSequence, setTriggerTooltipSequence] = useState(false)
   
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasEditorRef = useRef<CanvasEditorRef>(null)
@@ -24,7 +25,11 @@ export default function ImageEditor() {
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
   const initialTouchRef = useRef<{ x: number; y: number } | null>(null)
   
-  const drawing = useDrawing(lineThickness, imageSize.width, imageSize.height)
+  const handleLineConfirmed = useCallback(() => {
+    setTriggerTooltipSequence(true)
+  }, [])
+  
+  const drawing = useDrawing(lineThickness, imageSize.width, imageSize.height, handleLineConfirmed)
   
   const zoomPan = useZoomPan(imageSize, containerRef)
   const touch = useTouch()
@@ -402,6 +407,7 @@ export default function ImageEditor() {
             loupeState={drawing.loupeState}
             isZoomInitialized={zoomPan.isInitialized}
             isAtInitialScale={zoomPan.isAtInitialView}
+            triggerTooltipSequence={triggerTooltipSequence}
             getCanvasCoordinates={zoomPan.getCanvasCoordinates}
             onImageLoad={handleImageLoad}
             onMouseDown={handleMouseDown}

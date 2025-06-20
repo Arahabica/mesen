@@ -3,7 +3,7 @@ import { Line, Position, DrawingMode, LoupeState } from '@/types/editor'
 import { getThicknessOptions, CLICK_DISTANCE_THRESHOLD, LINE_HIT_EXPANSION } from '@/constants/editor'
 import { findBestLoupePosition } from '@/utils/loupePosition'
 
-export function useDrawing(lineThickness: number, imageWidth: number, imageHeight: number) {
+export function useDrawing(lineThickness: number, imageWidth: number, imageHeight: number, onLineConfirmed?: () => void) {
   const [lines, setLines] = useState<Line[]>([])
   const [currentLine, setCurrentLine] = useState<Line | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
@@ -102,12 +102,14 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
       )
       if (distance > CLICK_DISTANCE_THRESHOLD) {
         setLines([...lines, currentLine])
+        // Notify that a line has been confirmed
+        onLineConfirmed?.()
       }
     }
     setIsDrawing(false)
     setCurrentLine(null)
     setDrawStartPoint(null)
-  }, [isDrawing, currentLine, lines, drawStartPoint])
+  }, [isDrawing, currentLine, lines, drawStartPoint, onLineConfirmed])
 
   const selectLine = useCallback((index: number, coords: Position) => {
     setSelectedLineIndex(index)
