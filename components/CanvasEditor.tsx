@@ -68,6 +68,10 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
 
   // State to track if image is loaded
   const [isImageLoaded, setIsImageLoaded] = useState(false)
+  const [showResetTooltip, setShowResetTooltip] = useState(false)
+  const [hasShownTooltip, setHasShownTooltip] = useState(false)
+  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hideTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Handle image loading and create base canvas
   useEffect(() => {
@@ -195,6 +199,41 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
     }
   }, [])
 
+  // Handle tooltip display logic
+  useEffect(() => {
+    // Show tooltip when button becomes active for the first time
+    if (!isAtInitialScale && !hasShownTooltip) {
+      // Clear any existing timers
+      if (tooltipTimerRef.current) {
+        clearTimeout(tooltipTimerRef.current)
+      }
+      if (hideTooltipTimerRef.current) {
+        clearTimeout(hideTooltipTimerRef.current)
+      }
+
+      // Show tooltip after 0.5 seconds
+      tooltipTimerRef.current = setTimeout(() => {
+        setShowResetTooltip(true)
+        setHasShownTooltip(true)
+
+        // Hide tooltip after 3 seconds
+        hideTooltipTimerRef.current = setTimeout(() => {
+          setShowResetTooltip(false)
+        }, 3000)
+      }, 500)
+    }
+
+    // Cleanup timers on unmount
+    return () => {
+      if (tooltipTimerRef.current) {
+        clearTimeout(tooltipTimerRef.current)
+      }
+      if (hideTooltipTimerRef.current) {
+        clearTimeout(hideTooltipTimerRef.current)
+      }
+    }
+  }, [isAtInitialScale])
+
   return (
     <div className="relative w-screen h-dvh overflow-hidden bg-gray-900">
       <button
@@ -230,18 +269,28 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
         >
           <Download size={24} />
         </button>
-        <button
-          onClick={onResetView}
-          disabled={isAtInitialScale}
-          className={`w-12 h-12 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all ${
-            isAtInitialScale 
-              ? 'opacity-40 cursor-not-allowed' 
-              : 'opacity-100 hover:bg-gray-600'
-          }`}
-          aria-label="表示をリセット"
-        >
-          <Expand size={24} />
-        </button>
+        <div className="relative">
+          <button
+            onClick={onResetView}
+            disabled={isAtInitialScale}
+            className={`w-12 h-12 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all ${
+              isAtInitialScale 
+                ? 'opacity-40 cursor-not-allowed' 
+                : 'opacity-100 hover:bg-gray-600'
+            }`}
+            aria-label="元の位置に戻す"
+          >
+            <Expand size={24} />
+          </button>
+          <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-800 text-white text-sm rounded-md whitespace-nowrap pointer-events-none transition-all duration-700 ease-out ${
+            showResetTooltip ? 'opacity-90 transform translate-y-0 scale-100' : 'opacity-0 transform translate-y-3 scale-95'
+          }`}>
+            元の位置に戻す
+            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
+              <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-gray-800"></div>
+            </div>
+          </div>
+        </div>
       </div>
       
       <div
