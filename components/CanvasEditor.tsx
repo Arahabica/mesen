@@ -360,11 +360,11 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
             duration={1200}
             className="z-20"
             onClose={onThicknessTooltipClose}
-            style={{
-              left: lastConfirmedLineCenter.x * scale + position.x,
-              top: lastConfirmedLineCenter.y * scale + position.y - 40,
-              transform: 'translate(-50%, -100%)'
+            targetPosition={{
+              x: lastConfirmedLineCenter.x * scale + position.x,
+              y: lastConfirmedLineCenter.y * scale + position.y
             }}
+            preferredPlacement="top"
           />
         )}
       </div>
