@@ -259,8 +259,7 @@ export default function ImageEditor() {
       } else if (touch.currentMode === 'draw' && drawing.drawingMode === 'adjust') {
         // Switched from adjust mode to draw mode
         const drawCoords = zoomPan.getCanvasCoordinates(touchPos.clientX, touchPos.clientY)
-        const screenWidth = window.innerWidth
-        const dynamicThickness = Math.round(screenWidth * AUTO_THICKNESS_SCREEN_RATIO)
+        const dynamicThickness = calculateDynamicThickness()
         setLineThickness(dynamicThickness)
         drawing.startDrawMode()
         drawing.startDrawing(drawCoords, dynamicThickness)
