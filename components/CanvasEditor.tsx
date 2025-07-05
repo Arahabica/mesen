@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react'
+import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle, useCallback } from 'react'
 import { X, RotateCcw, Download, Expand } from 'lucide-react'
 import { Line, LoupeState, DrawingMode } from '@/types/editor'
 import Loupe from './Loupe'
@@ -16,7 +16,6 @@ interface CanvasEditorProps {
   loupeState: LoupeState
   isZoomInitialized: boolean
   isAtInitialScale: boolean
-  triggerTooltipSequence: boolean
   getCanvasCoordinates: (screenX: number, screenY: number) => { x: number; y: number }
   onImageLoad: (width: number, height: number) => void
   onMouseDown: (e: React.MouseEvent) => void
@@ -47,7 +46,6 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   loupeState,
   isZoomInitialized,
   isAtInitialScale,
-  triggerTooltipSequence,
   getCanvasCoordinates,
   onImageLoad,
   onMouseDown,
@@ -71,18 +69,13 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
 
   // State to track if image is loaded
   const [isImageLoaded, setIsImageLoaded] = useState(false)
+  // Tooltip states
   const [showResetTooltip, setShowResetTooltip] = useState(false)
-  const [hasShownTooltip, setHasShownTooltip] = useState(false)
-  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const hideTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // Sequential tooltip states
   const [showThicknessTooltip, setShowThicknessTooltip] = useState(false)
   const [showUndoTooltip, setShowUndoTooltip] = useState(false)
   const [showDownloadTooltip, setShowDownloadTooltip] = useState(false)
-  const [hasShownSequentialTooltips, setHasShownSequentialTooltips] = useState(false)
+  const [shownThicknessTooltip, setShownThicknessTooltip] = useState(false)
   const [lastConfirmedLineCenter, setLastConfirmedLineCenter] = useState<{ x: number; y: number } | null>(null)
-  const sequentialTooltipTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
   // Handle image loading and create base canvas
   useEffect(() => {
@@ -212,105 +205,34 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
 
   // Handle tooltip display logic
   useEffect(() => {
-    // Show tooltip when button becomes active for the first time
-    if (!isAtInitialScale && !hasShownTooltip) {
-      // Clear any existing timers
-      if (tooltipTimerRef.current) {
-        clearTimeout(tooltipTimerRef.current)
-      }
-      if (hideTooltipTimerRef.current) {
-        clearTimeout(hideTooltipTimerRef.current)
-      }
-
-      // Show tooltip after 0.5 seconds
-      tooltipTimerRef.current = setTimeout(() => {
-        setShowResetTooltip(true)
-        setHasShownTooltip(true)
-
-        // Hide tooltip after 3 seconds
-        hideTooltipTimerRef.current = setTimeout(() => {
-          setShowResetTooltip(false)
-        }, 3000)
-      }, 500)
-    }
-
-    // Cleanup timers on unmount
-    return () => {
-      if (tooltipTimerRef.current) {
-        clearTimeout(tooltipTimerRef.current)
-      }
-      if (hideTooltipTimerRef.current) {
-        clearTimeout(hideTooltipTimerRef.current)
-      }
+    if (!isAtInitialScale) {
+      setShowResetTooltip(true)
     }
   }, [isAtInitialScale])
 
   // Handle sequential tooltip sequence when line is confirmed
   useEffect(() => {
-    if (triggerTooltipSequence && lines.length > 0 && !hasShownSequentialTooltips) {
+    if (!shownThicknessTooltip && lines.length > 0) {
       const lastLine = lines[lines.length - 1]
       const lineCenter = {
         x: (lastLine.start.x + lastLine.end.x) / 2,
         y: (lastLine.start.y + lastLine.end.y) / 2
       }
       setLastConfirmedLineCenter(lineCenter)
-      setHasShownSequentialTooltips(true)
-
-      // Clear any existing timers
-      sequentialTooltipTimersRef.current.forEach(timer => clearTimeout(timer))
-      sequentialTooltipTimersRef.current = []
-
-      // Sequence: thickness (200ms delay + 3000ms duration) -> undo (3000ms duration) -> download (3000ms duration)
-      
-      // 1. Show thickness tooltip after 200ms
-      const timer1 = setTimeout(() => {
-        setShowThicknessTooltip(true)
-        
-        // Hide thickness tooltip after 3000ms
-        const timer2 = setTimeout(() => {
-          setShowThicknessTooltip(false)
-          
-          // Show undo tooltip immediately after thickness disappears
-          const timer3 = setTimeout(() => {
-            setShowUndoTooltip(true)
-            
-            // Hide undo tooltip after 3000ms
-            const timer4 = setTimeout(() => {
-              setShowUndoTooltip(false)
-              
-              // Show download tooltip immediately after undo disappears
-              const timer5 = setTimeout(() => {
-                setShowDownloadTooltip(true)
-                
-                // Hide download tooltip after 3000ms
-                const timer6 = setTimeout(() => {
-                  setShowDownloadTooltip(false)
-                }, 3000)
-                
-                sequentialTooltipTimersRef.current.push(timer6)
-              }, 0)
-              
-              sequentialTooltipTimersRef.current.push(timer5)
-            }, 3000)
-            
-            sequentialTooltipTimersRef.current.push(timer4)
-          }, 0)
-          
-          sequentialTooltipTimersRef.current.push(timer3)
-        }, 3000)
-        
-        sequentialTooltipTimersRef.current.push(timer2)
+      setShownThicknessTooltip(true)
+      setTimeout(() => {
+        setShowThicknessTooltip(true);
       }, 200)
-      
-      sequentialTooltipTimersRef.current.push(timer1)
     }
+  }, [shownThicknessTooltip, lines])
 
-    // Cleanup function
-    return () => {
-      sequentialTooltipTimersRef.current.forEach(timer => clearTimeout(timer))
-      sequentialTooltipTimersRef.current = []
-    }
-  }, [triggerTooltipSequence, lines])
+  const onThicknessTooltipClose = useCallback(() => {
+    setShowUndoTooltip(true)
+  }, []);
+
+  const onUndoTooltipClose = useCallback(() => {
+    setShowDownloadTooltip(true)
+  }, []);
 
   return (
     <div className="relative w-screen h-dvh overflow-hidden bg-gray-900">
@@ -339,6 +261,8 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           <TemporalTooltip
             text="元に戻す"
             show={showUndoTooltip}
+            duration={1400}
+            onClose={onUndoTooltipClose}
             className="bottom-full left-1/2 -translate-x-1/2 mb-2"
           />
         </div>
@@ -358,6 +282,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           <TemporalTooltip
             text="ダウンロード"
             show={showDownloadTooltip}
+            duration={1400}
             className="bottom-full left-1/2 -translate-x-1/2 mb-2"
           />
         </div>
@@ -377,6 +302,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           <TemporalTooltip
             text="元の位置に戻す"
             show={showResetTooltip}
+            duration={2500}
             className="bottom-full left-1/2 -translate-x-1/2 mb-2"
           />
         </div>
@@ -431,7 +357,9 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           <TemporalTooltip
             text="タップで太さを変えられます"
             show={showThicknessTooltip}
+            duration={1200}
             className="z-20"
+            onClose={onThicknessTooltipClose}
             style={{
               left: lastConfirmedLineCenter.x * scale + position.x,
               top: lastConfirmedLineCenter.y * scale + position.y - 40,
