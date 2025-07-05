@@ -176,7 +176,7 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
       visible: true,
       position: coords,
       mode: 'adjust',
-      isStationary: false,  // Start with non-stationary
+      isStationary: true,  // Start with stationary to show countdown immediately
       relativePosition: relativePos  // Store the relative position
     })
   }, [])

@@ -62,12 +62,22 @@ export function useTouch() {
       
       // Start adjust mode after 0.2s
       adjustModeTimerRef.current = setTimeout(() => {
-        if (!hasMovedRef.current && onAdjustMode && !isPinchingRef.current) {
+        if (onAdjustMode && !isPinchingRef.current) {
           onAdjustMode()
           isInAdjustModeRef.current = true
           // Initialize as non-stationary when entering adjust mode
-          isStationaryRef.current = false
+          isStationaryRef.current = true
           lastTouchPositionRef.current = { x: touch.clientX, y: touch.clientY }
+          stationaryStartPosRef.current = { x: touch.clientX, y: touch.clientY }
+          
+          // Start draw mode timer immediately when entering adjust mode
+          if (onDrawMode) {
+            drawModeTimerRef.current = setTimeout(() => {
+              if (isInAdjustModeRef.current && onDrawMode && !isPinchingRef.current) {
+                onDrawMode()
+              }
+            }, DRAW_MODE_DELAY)
+          }
         }
       }, ADJUST_MODE_DELAY)
       
