@@ -198,13 +198,18 @@ export default function ImageEditor() {
       drawing.startDrawing(coords, dynamicThickness)
     }
     
+    const onMoveLineMode = () => {
+      // Line move mode - no additional setup needed
+      // Line selection is already handled before this callback
+    }
+    
     const canvasCoords = zoomPan.getCanvasCoordinates(touchPoint.clientX, touchPoint.clientY)
     const touchedLineIndex = drawing.findLineAtPoint(canvasCoords)
     
     if (touchedLineIndex !== -1) {
-      // If touching a line, select it
+      // If touching a line, select it and wait for moveLine mode
       drawing.selectLine(touchedLineIndex, canvasCoords)
-      touch.startTouch(e.touches, onLongPress)
+      touch.startTouch(e.touches, onLongPress, undefined, undefined, onMoveLineMode)
     } else {
       // If not touching a line, start loupe mode or drag
       touch.startTouch(e.touches, onLongPress, onAdjustMode, onDrawMode)
@@ -269,7 +274,8 @@ export default function ImageEditor() {
       
       if (drawing.isDrawing) {
         drawing.draw(coords)
-      } else if (drawing.selectedLineIndex !== null && touch.hasMoved) {
+      } else if (touch.currentMode === 'moveLine' && drawing.selectedLineIndex !== null && touch.hasMoved) {
+        // Move line in moveLine mode
         drawing.dragLine(coords)
       } else if (!drawing.isDrawing && !drawing.isDraggingLine) {
         // Only allow dragging in move mode

@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { Position } from '@/types/editor'
 import { LONG_PRESS_DURATION, CLICK_DISTANCE_THRESHOLD, ADJUST_MODE_DELAY, DRAW_MODE_DELAY, PINCH_DISTANCE_THRESHOLD, PINCH_CENTER_THRESHOLD } from '@/constants/editor'
 
-type TouchMode = 'none' | 'move' | 'adjust' | 'draw'
+type TouchMode = 'none' | 'move' | 'adjust' | 'draw' | 'moveLine'
 
 export function useTouch() {
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
@@ -42,7 +42,7 @@ export function useTouch() {
   }
 
 
-  const startTouch = useCallback((touches: React.TouchList, onLongPress: () => void, onAdjustMode?: () => void, onDrawMode?: () => void) => {
+  const startTouch = useCallback((touches: React.TouchList, onLongPress: () => void, onAdjustMode?: () => void, onDrawMode?: () => void, onMoveLineMode?: () => void) => {
     // Clear any existing timers
     if (modeCheckTimerRef.current) clearTimeout(modeCheckTimerRef.current)
     if (adjustToDrawTimerRef.current) clearTimeout(adjustToDrawTimerRef.current)
@@ -71,22 +71,44 @@ export function useTouch() {
       lastTouchPositionRef.current = { x: touch.clientX, y: touch.clientY }
       isStationaryRef.current = false
       
-      // Check movement after 50ms to determine mode
+      // Check movement after 100ms to determine mode
       modeCheckTimerRef.current = setTimeout(() => {
         if (currentModeRef.current === 'none' && !isPinchingRef.current && initialTouchPosRef.current) {
-          // Check movement distance after 100ms
-          if (lastTouchPositionRef.current) {
-            const distance = Math.sqrt(
-              Math.pow(lastTouchPositionRef.current.x - initialTouchPosRef.current.x, 2) + 
-              Math.pow(lastTouchPositionRef.current.y - initialTouchPosRef.current.y, 2)
-            )
-            
-            if (distance > CLICK_DISTANCE_THRESHOLD) {
-              // Movement detected - enter move mode
-              currentModeRef.current = 'move'
-              setHasMoved(true)
+          // If touching a line, enter moveLine mode
+          if (onMoveLineMode) {
+            currentModeRef.current = 'moveLine'
+            onMoveLineMode()
+          } else {
+            // Check movement distance after 100ms for normal touch
+            if (lastTouchPositionRef.current) {
+              const distance = Math.sqrt(
+                Math.pow(lastTouchPositionRef.current.x - initialTouchPosRef.current.x, 2) + 
+                Math.pow(lastTouchPositionRef.current.y - initialTouchPosRef.current.y, 2)
+              )
+              
+              if (distance > CLICK_DISTANCE_THRESHOLD) {
+                // Movement detected - enter move mode
+                currentModeRef.current = 'move'
+                setHasMoved(true)
+              } else {
+                // No significant movement - enter adjust mode
+                currentModeRef.current = 'adjust'
+                adjustModeStartTimeRef.current = Date.now()
+                if (onAdjustMode) {
+                  onAdjustMode()
+                  isStationaryRef.current = true
+                  
+                  // Start timer for draw mode transition
+                  adjustToDrawTimerRef.current = setTimeout(() => {
+                    if (currentModeRef.current === 'adjust' && isStationaryRef.current && onDrawMode) {
+                      currentModeRef.current = 'draw'
+                      onDrawMode()
+                    }
+                  }, DRAW_MODE_DELAY)
+                }
+              }
             } else {
-              // No significant movement - enter adjust mode
+              // No movement data - enter adjust mode
               currentModeRef.current = 'adjust'
               adjustModeStartTimeRef.current = Date.now()
               if (onAdjustMode) {
@@ -101,22 +123,6 @@ export function useTouch() {
                   }
                 }, DRAW_MODE_DELAY)
               }
-            }
-          } else {
-            // No movement data - enter adjust mode
-            currentModeRef.current = 'adjust'
-            adjustModeStartTimeRef.current = Date.now()
-            if (onAdjustMode) {
-              onAdjustMode()
-              isStationaryRef.current = true
-              
-              // Start timer for draw mode transition
-              adjustToDrawTimerRef.current = setTimeout(() => {
-                if (currentModeRef.current === 'adjust' && isStationaryRef.current && onDrawMode) {
-                  currentModeRef.current = 'draw'
-                  onDrawMode()
-                }
-              }, DRAW_MODE_DELAY)
             }
           }
         }
@@ -133,6 +139,7 @@ export function useTouch() {
       
       // Early move mode detection: if in adjust mode but just entered (within 200ms), 
       // allow switching to move mode on significant movement
+      // Note: moveLine mode cannot switch to other modes during movement
       if (currentModeRef.current === 'adjust' && adjustModeStartTimeRef.current > 0) {
         const timeSinceAdjustMode = Date.now() - adjustModeStartTimeRef.current
         if (timeSinceAdjustMode < 200 && initialTouchPosRef.current) {
@@ -155,6 +162,17 @@ export function useTouch() {
             lastTouchPositionRef.current = currentPos
             return
           }
+        }
+      }
+      
+      // Update movement state for moveLine mode
+      if (currentModeRef.current === 'moveLine' && initialTouchPosRef.current) {
+        const totalDistance = Math.sqrt(
+          Math.pow(currentPos.x - initialTouchPosRef.current.x, 2) + 
+          Math.pow(currentPos.y - initialTouchPosRef.current.y, 2)
+        )
+        if (totalDistance > CLICK_DISTANCE_THRESHOLD) {
+          setHasMoved(true)
         }
       }
       
