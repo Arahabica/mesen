@@ -176,6 +176,9 @@ export default function ImageEditor() {
     }
     
     const onAdjustMode = () => {
+      // Don't enter adjust mode if dragging
+      if (zoomPan.isDragging) return
+      
       // Calculate dynamic thickness when entering adjust mode
       const dynamicThickness = calculateDynamicThickness()
       setLineThickness(dynamicThickness)
@@ -184,6 +187,9 @@ export default function ImageEditor() {
     }
     
     const onDrawMode = () => {
+      // Don't enter draw mode if dragging
+      if (zoomPan.isDragging) return
+      
       const coords = zoomPan.getCanvasCoordinates(touchCoords.x, touchCoords.y)
       // Calculate dynamic thickness based on current viewport
       const dynamicThickness = calculateDynamicThickness()
@@ -264,8 +270,8 @@ export default function ImageEditor() {
       } else if (drawing.selectedLineIndex !== null && touch.hasMoved) {
         drawing.dragLine(coords)
       } else if (!drawing.isDrawing && !drawing.isDraggingLine) {
-        // Allow dragging regardless of mode for smooth panning
-        if (drawing.drawingMode === 'move' && zoomPan.isDragging) {
+        // Allow dragging in move and adjust modes for smooth panning
+        if ((drawing.drawingMode === 'move' || drawing.drawingMode === 'adjust') && zoomPan.isDragging) {
           zoomPan.drag(touchPos.clientX, touchPos.clientY)
         }
       }
