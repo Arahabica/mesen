@@ -176,8 +176,8 @@ export default function ImageEditor() {
     }
     
     const onAdjustMode = () => {
-      // Don't enter adjust mode if dragging
-      if (zoomPan.isDragging) return
+      // Don't enter adjust mode if in move mode
+      if (touch.currentMode === 'move') return
       
       // Calculate dynamic thickness when entering adjust mode
       const dynamicThickness = calculateDynamicThickness()
@@ -187,8 +187,8 @@ export default function ImageEditor() {
     }
     
     const onDrawMode = () => {
-      // Don't enter draw mode if dragging
-      if (zoomPan.isDragging) return
+      // Don't enter draw mode if in move mode
+      if (touch.currentMode === 'move') return
       
       const coords = zoomPan.getCanvasCoordinates(touchCoords.x, touchCoords.y)
       // Calculate dynamic thickness based on current viewport
@@ -208,8 +208,7 @@ export default function ImageEditor() {
     } else {
       // If not touching a line, start loupe mode or drag
       touch.startTouch(e.touches, onLongPress, onAdjustMode, onDrawMode)
-      // Start dragging immediately for smooth panning
-      zoomPan.startDragging(touchPoint.clientX, touchPoint.clientY)
+      // Don't start dragging yet - let mode be determined first
     }
   }, [touch, drawing, zoomPan, imageSize.width, imageSize.height, lineThickness])
 
@@ -247,21 +246,24 @@ export default function ImageEditor() {
       const touchPos = e.touches[0]
       const coords = zoomPan.getCanvasCoordinates(touchPos.clientX, touchPos.clientY)
       
-      // Handle mode transition in adjust mode
-      const onDrawModeTransition = () => {
-        if (drawing.drawingMode === 'adjust') {
-          // Calculate dynamic thickness based on current viewport
-          const dynamicThickness = calculateDynamicThickness()
-          setLineThickness(dynamicThickness)
-          drawing.startDrawMode()
-          drawing.startDrawing(coords, dynamicThickness)
-        }
+      touch.moveTouch(e.touches)
+      
+      // Handle mode transitions
+      if (touch.currentMode === 'move' && (drawing.drawingMode === 'adjust' || drawing.drawingMode === 'draw')) {
+        // Switched from adjust/draw mode to move mode - hide loupe
+        drawing.resetMode()
+      } else if (touch.currentMode === 'draw' && drawing.drawingMode === 'adjust') {
+        // Switched from adjust mode to draw mode
+        const drawCoords = zoomPan.getCanvasCoordinates(touchPos.clientX, touchPos.clientY)
+        const screenWidth = window.innerWidth
+        const dynamicThickness = Math.round(screenWidth * AUTO_THICKNESS_SCREEN_RATIO)
+        setLineThickness(dynamicThickness)
+        drawing.startDrawMode()
+        drawing.startDrawing(drawCoords, dynamicThickness)
       }
       
-      touch.moveTouch(e.touches, onDrawModeTransition)
-      
-      // Update loupe position in adjust/draw modes (use screen coordinates)
-      if (drawing.drawingMode === 'adjust' || drawing.drawingMode === 'draw') {
+      // Update loupe position only in adjust/draw modes
+      if (touch.currentMode === 'adjust' || touch.currentMode === 'draw') {
         drawing.updateLoupePosition({ x: touchPos.clientX, y: touchPos.clientY }, touch.isStationary)
       }
       
@@ -270,9 +272,16 @@ export default function ImageEditor() {
       } else if (drawing.selectedLineIndex !== null && touch.hasMoved) {
         drawing.dragLine(coords)
       } else if (!drawing.isDrawing && !drawing.isDraggingLine) {
-        // Allow dragging in move and adjust modes for smooth panning
-        if ((drawing.drawingMode === 'move' || drawing.drawingMode === 'adjust') && zoomPan.isDragging) {
-          zoomPan.drag(touchPos.clientX, touchPos.clientY)
+        // Only allow dragging in move mode
+        if (touch.currentMode === 'move') {
+          // Start dragging if not already started
+          if (!zoomPan.isDragging && initialTouchRef.current) {
+            // Use initial touch position for correct drag calculation
+            zoomPan.startDragging(initialTouchRef.current.x, initialTouchRef.current.y)
+          }
+          if (zoomPan.isDragging) {
+            zoomPan.drag(touchPos.clientX, touchPos.clientY)
+          }
         }
       }
     }
