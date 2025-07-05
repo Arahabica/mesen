@@ -113,7 +113,7 @@ export default function ImageEditor() {
     } else if (drawing.selectedLineIndex !== null) {
       const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
       drawing.dragLine(coords)
-    } else if (zoomPan.isDragging && !drawing.isDrawing && !drawing.isDraggingLine && drawing.drawingMode === 'move') {
+    } else if (zoomPan.isDragging && !drawing.isDrawing && drawing.drawingMode === 'move') {
       zoomPan.drag(e.clientX, e.clientY)
     }
   }, [drawing, zoomPan, initialMousePos])
@@ -134,7 +134,6 @@ export default function ImageEditor() {
     }
     
     drawing.stopDrawing()
-    drawing.stopDraggingLine()
     zoomPan.stopDragging()
     setInitialMousePos(null)
     mouseHasMovedRef.current = false
@@ -277,7 +276,7 @@ export default function ImageEditor() {
       } else if (touch.currentMode === 'moveLine' && drawing.selectedLineIndex !== null && touch.hasMoved) {
         // Move line in moveLine mode
         drawing.dragLine(coords)
-      } else if (!drawing.isDrawing && !drawing.isDraggingLine) {
+      } else if (!drawing.isDrawing && touch.currentMode !== 'moveLine') {
         // Only allow dragging in move mode
         if (touch.currentMode === 'move') {
           // Start dragging if not already started

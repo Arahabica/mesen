@@ -9,7 +9,6 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
   const [isDrawing, setIsDrawing] = useState(false)
   const [drawStartPoint, setDrawStartPoint] = useState<Position | null>(null)
   const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null)
-  const [isDraggingLine, setIsDraggingLine] = useState(false)
   const [lineDragOffset, setLineDragOffset] = useState<Position>({ x: 0, y: 0 })
   const [drawingMode, setDrawingMode] = useState<DrawingMode>('move')
   const [loupeState, setLoupeState] = useState<LoupeState>({
@@ -120,8 +119,6 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
 
   const dragLine = useCallback((coords: Position) => {
     if (selectedLineIndex === null) return
-    
-    setIsDraggingLine(true)
     const line = lines[selectedLineIndex]
     const dx = line.end.x - line.start.x
     const dy = line.end.y - line.start.y
@@ -148,7 +145,6 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
   }, [lines, imageWidth, imageHeight])
 
   const stopDraggingLine = useCallback(() => {
-    setIsDraggingLine(false)
     setSelectedLineIndex(null)
   }, [])
 
@@ -215,7 +211,6 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
     currentLine,
     isDrawing,
     selectedLineIndex,
-    isDraggingLine,
     drawingMode,
     loupeState,
     findLineAtPoint,
