@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } f
 import { X, RotateCcw, Download, Expand } from 'lucide-react'
 import { Line, LoupeState, DrawingMode } from '@/types/editor'
 import Loupe from './Loupe'
+import TemporalTooltip from './TemporalTooltip'
 
 interface CanvasEditorProps {
   image: string
@@ -335,14 +336,11 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           >
             <RotateCcw size={24} />
           </button>
-          <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-800 text-white text-sm rounded-md whitespace-nowrap pointer-events-none transition-all duration-700 ease-out ${
-            showUndoTooltip ? 'opacity-90 transform translate-y-0 scale-100' : 'opacity-0 transform translate-y-3 scale-95'
-          }`}>
-            元に戻す
-            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
-              <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-gray-800"></div>
-            </div>
-          </div>
+          <TemporalTooltip
+            text="元に戻す"
+            show={showUndoTooltip}
+            className="bottom-full left-1/2 -translate-x-1/2 mb-2"
+          />
         </div>
         <div className="relative">
           <button
@@ -357,14 +355,11 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           >
             <Download size={24} />
           </button>
-          <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-800 text-white text-sm rounded-md whitespace-nowrap pointer-events-none transition-all duration-700 ease-out ${
-            showDownloadTooltip ? 'opacity-90 transform translate-y-0 scale-100' : 'opacity-0 transform translate-y-3 scale-95'
-          }`}>
-            ダウンロード
-            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
-              <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-gray-800"></div>
-            </div>
-          </div>
+          <TemporalTooltip
+            text="ダウンロード"
+            show={showDownloadTooltip}
+            className="bottom-full left-1/2 -translate-x-1/2 mb-2"
+          />
         </div>
         <div className="relative">
           <button
@@ -379,14 +374,11 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           >
             <Expand size={24} />
           </button>
-          <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-800 text-white text-sm rounded-md whitespace-nowrap pointer-events-none transition-all duration-700 ease-out ${
-            showResetTooltip ? 'opacity-90 transform translate-y-0 scale-100' : 'opacity-0 transform translate-y-3 scale-95'
-          }`}>
-            元の位置に戻す
-            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
-              <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-gray-800"></div>
-            </div>
-          </div>
+          <TemporalTooltip
+            text="元の位置に戻す"
+            show={showResetTooltip}
+            className="bottom-full left-1/2 -translate-x-1/2 mb-2"
+          />
         </div>
       </div>
       
@@ -436,21 +428,16 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
         )}
         {/* Thickness tooltip on line center */}
         {showThicknessTooltip && lastConfirmedLineCenter && (
-          <div 
-            className={`absolute px-3 py-1.5 bg-gray-800 text-white text-sm rounded-md whitespace-nowrap pointer-events-none transition-all duration-700 ease-out z-20 ${
-              showThicknessTooltip ? 'opacity-90 transform translate-y-0 scale-100' : 'opacity-0 transform translate-y-3 scale-95'
-            }`}
+          <TemporalTooltip
+            text="タップで太さを変えられます"
+            show={showThicknessTooltip}
+            className="z-20"
             style={{
               left: lastConfirmedLineCenter.x * scale + position.x,
               top: lastConfirmedLineCenter.y * scale + position.y - 40,
               transform: 'translate(-50%, -100%)'
             }}
-          >
-            タップで太さを変えられます
-            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
-              <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-gray-800"></div>
-            </div>
-          </div>
+          />
         )}
       </div>
     </div>
@@ -459,4 +446,4 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
 
 CanvasEditor.displayName = 'CanvasEditor'
 
-export default CanvasEditor
+export default CanvasEditor;
