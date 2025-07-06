@@ -1,7 +1,8 @@
 import React, { useRef } from 'react'
+import { ImageData } from '@/types/editor'
 
 interface LandingPageProps {
-  onImageSelect: (image: string, filename?: string) => void
+  onImageSelect: (imageData: ImageData) => void
 }
 
 export default function LandingPage({ onImageSelect }: LandingPageProps) {
@@ -12,7 +13,10 @@ export default function LandingPage({ onImageSelect }: LandingPageProps) {
     if (file) {
       const reader = new FileReader()
       reader.onload = (e) => {
-        onImageSelect(e.target?.result as string, file.name)
+        onImageSelect({
+          dataURL: e.target?.result as string,
+          filename: file.name
+        })
       }
       reader.readAsDataURL(file)
     }

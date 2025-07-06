@@ -6,12 +6,11 @@ import CanvasEditor, { CanvasEditorRef } from './CanvasEditor'
 import { useDrawing } from '@/hooks/useDrawing'
 import { useZoomPan } from '@/hooks/useZoomPan'
 import { useTouch } from '@/hooks/useTouch'
-import { ImageSize } from '@/types/editor'
+import { ImageSize, ImageData } from '@/types/editor'
 import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS } from '@/constants/editor'
 
 export default function ImageEditor() {
-  const [image, setImage] = useState<string | null>(null)
-  const [imageFilename, setImageFilename] = useState<string | null>(null)
+  const [imageData, setImageData] = useState<ImageData | null>(null)
   const [lineThickness, setLineThickness] = useState(10)
   const [imageSize, setImageSize] = useState<ImageSize>({ width: 0, height: 0 })
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
@@ -30,9 +29,8 @@ export default function ImageEditor() {
   const zoomPan = useZoomPan(imageSize, containerRef)
   const touch = useTouch()
 
-  const handleImageSelect = (selectedImage: string, filename?: string) => {
-    setImage(selectedImage)
-    setImageFilename(filename || null)
+  const handleImageSelect = (selectedImageData: ImageData) => {
+    setImageData(selectedImageData)
     // Start fade-in animation
     requestAnimationFrame(() => {
       setCanvasOpacity(1)
@@ -336,7 +334,7 @@ export default function ImageEditor() {
 
   const download = useCallback(() => {
     const canvas = canvasEditorRef.current?.getCanvas()
-    if (!canvas || !image) return
+    if (!canvas || !imageData) return
     
     const img = new Image()
     img.onload = () => {
@@ -368,18 +366,18 @@ export default function ImageEditor() {
           
           // Generate filename: {original_name}_mesen.{extension}
           let downloadFilename = 'mesen.png'
-          if (imageFilename) {
-            const lastDotIndex = imageFilename.lastIndexOf('.')
+          if (imageData.filename) {
+            const lastDotIndex = imageData.filename.lastIndexOf('.')
             if (lastDotIndex > 0) {
-              const nameWithoutExt = imageFilename.substring(0, lastDotIndex)
-              const extension = imageFilename.substring(lastDotIndex + 1).toLowerCase()
+              const nameWithoutExt = imageData.filename.substring(0, lastDotIndex)
+              const extension = imageData.filename.substring(lastDotIndex + 1).toLowerCase()
               // Use original extension if it's a valid image format, otherwise use png
               const validExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp']
               const finalExt = validExtensions.includes(extension) ? extension : 'png'
               downloadFilename = `${nameWithoutExt}_mesen.${finalExt}`
             } else {
               // No extension in original filename
-              downloadFilename = `${imageFilename}_mesen.png`
+              downloadFilename = `${imageData.filename}_mesen.png`
             }
           }
           
@@ -389,16 +387,15 @@ export default function ImageEditor() {
         }
       })
     }
-    img.src = image
-  }, [image, drawing.lines, imageFilename])
+    img.src = imageData.dataURL
+  }, [imageData, drawing.lines])
 
   const resetView = useCallback(() => {
     zoomPan.resetWithAnimation()
   }, [zoomPan])
 
   const closeImage = useCallback(() => {
-    setImage(null)
-    setImageFilename(null)
+    setImageData(null)
     drawing.setLines([])
     zoomPan.reset()
     setImageSize({ width: 0, height: 0 })
@@ -408,21 +405,21 @@ export default function ImageEditor() {
 
   React.useEffect(() => {
     const container = containerRef.current
-    if (!container || !image) return
+    if (!container || !imageData) return
     
     container.addEventListener('wheel', handleWheel, { passive: false })
     
     return () => {
       container.removeEventListener('wheel', handleWheel)
     }
-  }, [handleWheel, image])
+  }, [handleWheel, imageData])
 
   return (
     <>
       {showLanding && (
         <LandingPage onImageSelect={handleImageSelect} />
       )}
-      {image && (
+      {imageData && (
         <div 
           ref={containerRef}
           style={{
@@ -437,7 +434,7 @@ export default function ImageEditor() {
         >
           <CanvasEditor
             ref={canvasEditorRef}
-            image={image}
+            image={imageData.dataURL}
             lines={drawing.lines}
             currentLine={drawing.currentLine}
             scale={zoomPan.scale}

@@ -25,3 +25,8 @@ export interface LoupeState {
   isStationary?: boolean
   relativePosition?: LoupeRelativePosition
 }
+
+export interface ImageData {
+  dataURL: string
+  filename: string
+}
