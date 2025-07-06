@@ -87,7 +87,7 @@ export default function TemporalTooltip({
           `absolute px-3 py-1.5 bg-gray-800 text-white text-sm rounded-md 
           whitespace-nowrap pointer-events-none transition-all duration-700 ease-out
           ${
-            isVisible ? 'opacity-90 transform translate-y-0 scale-100' : 'opacity-0 transform translate-y-3 scale-95'
+            isVisible ? 'opacity-80 transform translate-y-0 scale-100' : 'opacity-0 transform translate-y-3 scale-95'
           }
           ${className || ''}
           `

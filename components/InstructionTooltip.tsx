@@ -29,7 +29,7 @@ export default function InstructionTooltip({ visible, onHide }: InstructionToolt
       // Start fade in animation
       const fadeInTimer = setTimeout(() => {
         setIsFadingIn(false)
-      }, 650) // Match the animation duration
+      }, 350) // Match the animation duration
       
       // Auto hide after 3 seconds
       const autoHideTimer = setTimeout(() => {
@@ -48,7 +48,7 @@ export default function InstructionTooltip({ visible, onHide }: InstructionToolt
       // Hide after 200ms when touched
       setTimeout(() => {
         fadeOut()
-      }, 200)
+      }, 700)
     }
   }
 
@@ -63,7 +63,7 @@ export default function InstructionTooltip({ visible, onHide }: InstructionToolt
       onClick={handleTouch}
       style={{ touchAction: 'none' }}
     >
-      <div className="bg-white bg-opacity-80 rounded-2xl px-8 py-6 shadow-lg backdrop-blur-sm">
+      <div className="bg-gray-800 bg-opacity-80 rounded-2xl px-8 py-6 shadow-lg backdrop-blur-sm">
         <div className="flex flex-col items-center space-y-4">
           <div className="w-32 h-32 flex items-center justify-center">
             <img 
@@ -72,7 +72,7 @@ export default function InstructionTooltip({ visible, onHide }: InstructionToolt
               className="w-28 h-28"
             />
           </div>
-          <p className="text-gray-800 text-lg font-medium text-center">
+          <p className="text-white text-lg font-medium text-center">
             長押しで目線が引けます
           </p>
         </div>
