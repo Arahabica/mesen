@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback } from 'react'
 import LandingPage from './LandingPage'
 import CanvasEditor, { CanvasEditorRef } from './CanvasEditor'
+import InstructionTooltip from './InstructionTooltip'
 import { useDrawing } from '@/hooks/useDrawing'
 import { useZoomPan } from '@/hooks/useZoomPan'
 import { useTouch } from '@/hooks/useTouch'
@@ -16,6 +17,7 @@ export default function ImageEditor() {
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
   const [showLanding, setShowLanding] = useState(true)
   const [canvasOpacity, setCanvasOpacity] = useState(0)
+  const [showInstructionTooltip, setShowInstructionTooltip] = useState(false)
   
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasEditorRef = useRef<CanvasEditorRef>(null)
@@ -60,6 +62,14 @@ export default function ImageEditor() {
     // Set default thickness based on image dimensions
     const defaultThickness = getDefaultThickness(width, height)
     setLineThickness(defaultThickness)
+    // Show instruction tooltip 0.4 seconds after image is loaded
+    setTimeout(() => {
+      setShowInstructionTooltip(true)
+    }, 400)
+  }, [])
+
+  const handleHideInstructionTooltip = useCallback(() => {
+    setShowInstructionTooltip(false)
   }, [])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -460,6 +470,10 @@ export default function ImageEditor() {
           />
         </div>
       )}
+      <InstructionTooltip
+        visible={showInstructionTooltip}
+        onHide={handleHideInstructionTooltip}
+      />
     </>
   )
 }
