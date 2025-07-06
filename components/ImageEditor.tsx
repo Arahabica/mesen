@@ -7,6 +7,7 @@ import InstructionTooltip from './InstructionTooltip'
 import { useDrawing } from '@/hooks/useDrawing'
 import { useZoomPan } from '@/hooks/useZoomPan'
 import { useTouch } from '@/hooks/useTouch'
+import { useInstructionTooltip } from '@/hooks/useInstructionTooltip'
 import { ImageSize, ImageData } from '@/types/editor'
 import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS } from '@/constants/editor'
 
@@ -17,7 +18,6 @@ export default function ImageEditor() {
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
   const [showLanding, setShowLanding] = useState(true)
   const [canvasOpacity, setCanvasOpacity] = useState(0)
-  const [showInstructionTooltip, setShowInstructionTooltip] = useState(false)
   
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasEditorRef = useRef<CanvasEditorRef>(null)
@@ -27,9 +27,9 @@ export default function ImageEditor() {
   const initialTouchRef = useRef<{ x: number; y: number } | null>(null)
   
   const drawing = useDrawing(lineThickness, imageSize.width, imageSize.height)
-  
   const zoomPan = useZoomPan(imageSize, containerRef)
   const touch = useTouch()
+  const { showInstructionTooltip, showInstruction, hideInstruction } = useInstructionTooltip()
 
   const handleImageSelect = (selectedImageData: ImageData) => {
     setImageData(selectedImageData)
@@ -62,15 +62,9 @@ export default function ImageEditor() {
     // Set default thickness based on image dimensions
     const defaultThickness = getDefaultThickness(width, height)
     setLineThickness(defaultThickness)
-    // Show instruction tooltip 0.4 seconds after image is loaded
-    setTimeout(() => {
-      setShowInstructionTooltip(true)
-    }, 400)
-  }, [])
-
-  const handleHideInstructionTooltip = useCallback(() => {
-    setShowInstructionTooltip(false)
-  }, [])
+    // Show instruction tooltip with localStorage-based control
+    showInstruction()
+  }, [showInstruction])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const { clientX, clientY } = e
@@ -472,7 +466,7 @@ export default function ImageEditor() {
       )}
       <InstructionTooltip
         visible={showInstructionTooltip}
-        onHide={handleHideInstructionTooltip}
+        onHide={hideInstruction}
       />
     </>
   )
