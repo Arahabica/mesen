@@ -198,8 +198,14 @@ export default function ImageEditor() {
     }
     
     const onMoveLineMode = () => {
-      // Line move mode - no additional setup needed
-      // Line selection is already handled before this callback
+      // Line move mode - show loupe
+      drawing.setDrawingMode('moveLine')
+      drawing.setLoupeState({
+        visible: true,
+        position: { x: touchPoint.clientX, y: touchPoint.clientY },
+        mode: 'moveLine',
+        isStationary: false
+      })
     }
     
     const canvasCoords = zoomPan.getCanvasCoordinates(touchPoint.clientX, touchPoint.clientY)
@@ -265,8 +271,8 @@ export default function ImageEditor() {
         drawing.startDrawing(drawCoords, dynamicThickness)
       }
       
-      // Update loupe position only in adjust/draw modes
-      if (touch.currentMode === 'adjust' || touch.currentMode === 'draw') {
+      // Update loupe position in adjust/draw/moveLine modes
+      if (touch.currentMode === 'adjust' || touch.currentMode === 'draw' || touch.currentMode === 'moveLine') {
         drawing.updateLoupePosition({ x: touchPos.clientX, y: touchPos.clientY }, touch.isStationary)
       }
       

@@ -1,8 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
-import { Position } from '@/types/editor'
+import { Position, DrawingMode } from '@/types/editor'
 import { LONG_PRESS_DURATION, CLICK_DISTANCE_THRESHOLD, ADJUST_MODE_DELAY, DRAW_MODE_DELAY, PINCH_DISTANCE_THRESHOLD, PINCH_CENTER_THRESHOLD } from '@/constants/editor'
-
-type TouchMode = 'none' | 'move' | 'adjust' | 'draw' | 'moveLine'
 
 export function useTouch() {
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
@@ -12,7 +10,7 @@ export function useTouch() {
   const initialTouchPosRef = useRef<Position | null>(null)
   
   // Mode management
-  const currentModeRef = useRef<TouchMode>('none')
+  const currentModeRef = useRef<DrawingMode>('none')
   const modeCheckTimerRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const adjustToDrawTimerRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const adjustModeStartTimeRef = useRef<number>(0)

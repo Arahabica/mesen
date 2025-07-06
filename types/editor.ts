@@ -14,7 +14,7 @@ export interface ImageSize {
   height: number
 }
 
-export type DrawingMode = 'move' | 'adjust' | 'draw'
+export type DrawingMode = 'none' | 'move' | 'adjust' | 'draw' | 'moveLine'
 
 export type LoupeRelativePosition = 'top-left' | 'top-left-top' | 'top' | 'top-top-right' | 'top-right' | 'bottom-right' | 'bottom-left'
 

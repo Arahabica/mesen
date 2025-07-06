@@ -191,6 +191,7 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
       return {
         ...prev,
         position: coords,
+        mode: drawingMode,  // Update mode based on current drawing mode
         isStationary: drawingMode === 'adjust' ? isStationary : false
       }
     })
@@ -227,6 +228,8 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
     startAdjustMode,
     startDrawMode,
     updateLoupePosition,
-    resetMode
+    resetMode,
+    setDrawingMode,
+    setLoupeState
   }
 }
