@@ -11,6 +11,7 @@ import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, AUTO_THI
 
 export default function ImageEditor() {
   const [image, setImage] = useState<string | null>(null)
+  const [imageFilename, setImageFilename] = useState<string | null>(null)
   const [lineThickness, setLineThickness] = useState(10)
   const [imageSize, setImageSize] = useState<ImageSize>({ width: 0, height: 0 })
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
@@ -29,8 +30,9 @@ export default function ImageEditor() {
   const zoomPan = useZoomPan(imageSize, containerRef)
   const touch = useTouch()
 
-  const handleImageSelect = (selectedImage: string) => {
+  const handleImageSelect = (selectedImage: string, filename?: string) => {
     setImage(selectedImage)
+    setImageFilename(filename || null)
     // Start fade-in animation
     requestAnimationFrame(() => {
       setCanvasOpacity(1)
@@ -363,14 +365,32 @@ export default function ImageEditor() {
           const url = URL.createObjectURL(blob)
           const a = document.createElement('a')
           a.href = url
-          a.download = 'censored-image.png'
+          
+          // Generate filename: {original_name}_mesen.{extension}
+          let downloadFilename = 'mesen.png'
+          if (imageFilename) {
+            const lastDotIndex = imageFilename.lastIndexOf('.')
+            if (lastDotIndex > 0) {
+              const nameWithoutExt = imageFilename.substring(0, lastDotIndex)
+              const extension = imageFilename.substring(lastDotIndex + 1).toLowerCase()
+              // Use original extension if it's a valid image format, otherwise use png
+              const validExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp']
+              const finalExt = validExtensions.includes(extension) ? extension : 'png'
+              downloadFilename = `${nameWithoutExt}_mesen.${finalExt}`
+            } else {
+              // No extension in original filename
+              downloadFilename = `${imageFilename}_mesen.png`
+            }
+          }
+          
+          a.download = downloadFilename
           a.click()
           URL.revokeObjectURL(url)
         }
       })
     }
     img.src = image
-  }, [image, drawing.lines])
+  }, [image, drawing.lines, imageFilename])
 
   const resetView = useCallback(() => {
     zoomPan.resetWithAnimation()
@@ -378,6 +398,7 @@ export default function ImageEditor() {
 
   const closeImage = useCallback(() => {
     setImage(null)
+    setImageFilename(null)
     drawing.setLines([])
     zoomPan.reset()
     setImageSize({ width: 0, height: 0 })
