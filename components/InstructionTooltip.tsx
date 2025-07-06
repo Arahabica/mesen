@@ -29,7 +29,7 @@ export default function InstructionTooltip({ visible, onHide }: InstructionToolt
       // Start fade in animation
       const fadeInTimer = setTimeout(() => {
         setIsFadingIn(false)
-      }, 300) // Match the animation duration
+      }, 650) // Match the animation duration
       
       // Auto hide after 3 seconds
       const autoHideTimer = setTimeout(() => {
@@ -63,13 +63,13 @@ export default function InstructionTooltip({ visible, onHide }: InstructionToolt
       onClick={handleTouch}
       style={{ touchAction: 'none' }}
     >
-      <div className="bg-white bg-opacity-70 rounded-2xl px-8 py-6 shadow-lg backdrop-blur-sm">
+      <div className="bg-white bg-opacity-80 rounded-2xl px-8 py-6 shadow-lg backdrop-blur-sm">
         <div className="flex flex-col items-center space-y-4">
-          <div className="w-16 h-16 flex items-center justify-center">
+          <div className="w-32 h-32 flex items-center justify-center">
             <img 
               src="/long_touch.svg" 
               alt="長押しアイコン" 
-              className="w-14 h-14"
+              className="w-28 h-28"
             />
           </div>
           <p className="text-gray-800 text-lg font-medium text-center">
