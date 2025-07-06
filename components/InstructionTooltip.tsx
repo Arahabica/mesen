@@ -56,14 +56,15 @@ export default function InstructionTooltip({ visible, onHide }: InstructionToolt
 
   return (
     <div
-      className={`fixed inset-0 flex items-center justify-center z-50 transition-opacity duration-300 ${
+      className={`fixed inset-0 flex items-center justify-center z-50 transition-opacity duration-300 pointer-events-none ${
         isAnimating ? 'opacity-0' : isFadingIn ? 'opacity-0' : 'opacity-100'
       }`}
-      onTouchStart={handleTouch}
-      onClick={handleTouch}
-      style={{ touchAction: 'none' }}
     >
-      <div className="bg-gray-800 bg-opacity-80 rounded-2xl px-8 py-6 shadow-lg backdrop-blur-sm">
+      <div 
+        className="bg-gray-800 bg-opacity-80 rounded-2xl px-8 py-6 shadow-lg backdrop-blur-sm pointer-events-auto"
+        onTouchStart={handleTouch}
+        onClick={handleTouch}
+      >
         <div className="flex flex-col items-center space-y-4">
           <div className="w-32 h-32 flex items-center justify-center">
             <img 
