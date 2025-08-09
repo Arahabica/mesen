@@ -40,19 +40,19 @@ export default function LandingPage({ onImageSelect, isVisible = true }: Landing
           <div className="bg-white rounded-xl shadow-lg p-4 mb-6">
             <h2 className="text-xl font-bold text-gray-800 mb-3 text-center">こんな時に</h2>
             <div className="space-y-4">
-              <div className="flex items-start space-x-2">
+              <div className="flex items-start space-x-1">
                 <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
                   <span className="text-gray-600 text-sm">✓</span>
                 </div>
                 <p className="text-gray-700">背景に写り込んだ通行人の顔を隠したい</p>
               </div>
-              <div className="flex items-start space-x-2">
+              <div className="flex items-start space-x-1">
                 <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
                   <span className="text-gray-600 text-sm">✓</span>
                 </div>
                 <p className="text-gray-700">お店や観光地で他の人が写ってしまった</p>
               </div>
-              <div className="flex items-start space-x-2">
+              <div className="flex items-start space-x-1">
                 <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
                   <span className="text-gray-600 text-sm">✓</span>
                 </div>
@@ -63,7 +63,7 @@ export default function LandingPage({ onImageSelect, isVisible = true }: Landing
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full px-8 py-4 bg-gradient-to-r from-gray-500 to-gray-600 text-white text-2xl font-semibold rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+            className="w-full px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-2xl font-semibold rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
           >
             画像を選択
           </button>
