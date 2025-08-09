@@ -12,13 +12,15 @@ export default function LandingImage() {
   const onLoad = useCallback(() => {
     setIsLoaded(true);
     if (!hasAnimated) {
-      setHasAnimated(true);
       if (Math.random() > 0.5) {
         setShowMan(true);
       }
       if (Math.random() > 0.5) {
         setShowWoman(true);
       }
+      setTimeout(() => {
+        setHasAnimated(true);
+      }, 5000);
     }
   }, [hasAnimated]);
 
