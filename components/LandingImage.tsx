@@ -26,10 +26,10 @@ export default function LandingImage() {
     }
   }, [imgRef.current])
 
-  const imgClass = `w-full h-auto object-contain mb-8 ${isLoaded ? 'opacity-100' : 'opacity-0'}`;
+  const imgClass = `w-full h-auto object-contain ${isLoaded ? 'opacity-100' : 'opacity-0'}`;
 
   return (
-    <div style={{ width: '100%', position: 'relative' }} className="landing-image-component">
+    <div style={{ width: '100%', position: 'relative' }} className="landing-image-component mb-6">
       <img
         ref={imgRef}
         src="/mesen.webp"
