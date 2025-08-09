@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState, useRef, useCallback } from 'react'
-import LandingPage from './LandingPage'
 import CanvasEditor, { CanvasEditorRef } from './CanvasEditor'
 import InstructionTooltip from './InstructionTooltip'
 import { useDrawing } from '@/hooks/useDrawing'
@@ -11,13 +10,17 @@ import { useInstructionTooltip } from '@/hooks/useInstructionTooltip'
 import { ImageSize, ImageData } from '@/types/editor'
 import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS } from '@/constants/editor'
 
-export default function ImageEditor() {
-  const [imageData, setImageData] = useState<ImageData | null>(null)
+interface ImageEditorProps {
+  initialImage: ImageData
+  onReset: () => void
+}
+
+export default function ImageEditor({ initialImage, onReset }: ImageEditorProps) {
+  const [imageData, setImageData] = useState<ImageData | null>(initialImage)
   const [lineThickness, setLineThickness] = useState(10)
   const [imageSize, setImageSize] = useState<ImageSize>({ width: 0, height: 0 })
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
-  const [showLanding, setShowLanding] = useState(true)
-  const [canvasOpacity, setCanvasOpacity] = useState(0)
+  const [canvasOpacity, setCanvasOpacity] = useState(1)
   
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasEditorRef = useRef<CanvasEditorRef>(null)
@@ -31,17 +34,6 @@ export default function ImageEditor() {
   const touch = useTouch()
   const { showInstructionTooltip, showInstruction, hideInstruction } = useInstructionTooltip()
 
-  const handleImageSelect = (selectedImageData: ImageData) => {
-    setImageData(selectedImageData)
-    // Start fade-in animation
-    requestAnimationFrame(() => {
-      setCanvasOpacity(1)
-    })
-    // Remove landing page after animation
-    setTimeout(() => {
-      setShowLanding(false)
-    }, 200)
-  }
 
   // Calculate dynamic thickness based on current viewport and zoom
   const calculateDynamicThickness = useCallback(() => {
@@ -404,8 +396,8 @@ export default function ImageEditor() {
     zoomPan.reset()
     setImageSize({ width: 0, height: 0 })
     setCanvasOpacity(0)
-    setShowLanding(true)
-  }, [drawing, zoomPan])
+    onReset()
+  }, [drawing, zoomPan, onReset])
 
   React.useEffect(() => {
     const container = containerRef.current
@@ -420,9 +412,6 @@ export default function ImageEditor() {
 
   return (
     <>
-      {showLanding && (
-        <LandingPage onImageSelect={handleImageSelect} />
-      )}
       {imageData && (
         <div 
           ref={containerRef}

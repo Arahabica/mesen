@@ -1,5 +1,5 @@
-import ImageEditor from '@/components/ImageEditor'
+import App from '@/components/App'
 
 export default function Home() {
-  return <ImageEditor />
+  return <App />
 }

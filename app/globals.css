@@ -58,3 +58,12 @@ html, body {
     transform: translateY(0);
   }
 }
+
+@keyframes simpleFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
