@@ -6,17 +6,21 @@ export default function LandingImage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [showMan, setShowMan] = useState(false);
   const [showWoman, setShowWoman] = useState(false);
+  const [hasAnimated, setHasAnimated] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const onLoad = useCallback(() => {
     setIsLoaded(true);
-    if (Math.random() > 0.5) {
-      setShowMan(true);
+    if (!hasAnimated) {
+      setHasAnimated(true);
+      if (Math.random() > 0.5) {
+        setShowMan(true);
+      }
+      if (Math.random() > 0.5) {
+        setShowWoman(true);
+      }
     }
-    if (Math.random() > 0.5) {
-      setShowWoman(true);
-    }
-  }, []);
+  }, [hasAnimated]);
 
   useEffect(() => {
     // Check if image is already loaded (from cache)
@@ -29,7 +33,7 @@ export default function LandingImage() {
   const imgClass = `w-full h-auto object-contain ${isLoaded ? 'opacity-100' : 'opacity-0'}`;
 
   return (
-    <div style={{ width: '100%', position: 'relative' }} className="landing-image-component mb-6">
+    <div style={{ width: '100%', position: 'relative' }} className={`mb-6 ${hasAnimated ? '' : 'landing-image-component'}`}>
       <img
         ref={imgRef}
         src="/mesen.webp"

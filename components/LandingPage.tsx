@@ -4,9 +4,10 @@ import LandingImage from './LandingImage'
 
 interface LandingPageProps {
   onImageSelect: (imageData: ImageData) => void
+  isVisible?: boolean
 }
 
-export default function LandingPage({ onImageSelect }: LandingPageProps) {
+export default function LandingPage({ onImageSelect, isVisible = true }: LandingPageProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -24,7 +25,7 @@ export default function LandingPage({ onImageSelect }: LandingPageProps) {
   }
 
   return (
-    <div className="h-dvh bg-white flex flex-col overflow-hidden">
+    <div className="h-dvh bg-white flex flex-col overflow-hidden" style={{ display: isVisible ? 'flex' : 'none' }}>
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 py-4 max-w-sm mx-auto">
           <LandingImage />

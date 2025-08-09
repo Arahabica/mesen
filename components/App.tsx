@@ -17,18 +17,22 @@ export default function App() {
     setSelectedImage(null)
   }
 
-  if (!selectedImage) {
-    return <LandingPage onImageSelect={handleImageSelect} />
-  }
-
   return (
-    <Suspense fallback={
-      <div className="h-dvh bg-gray-900 flex items-center justify-center animate-simpleFadeIn" />
-    }>
-      <ImageEditor 
-        initialImage={selectedImage} 
-        onReset={handleReset}
+    <>
+      <LandingPage 
+        onImageSelect={handleImageSelect} 
+        isVisible={!selectedImage}
       />
-    </Suspense>
+      {selectedImage && (
+        <Suspense fallback={
+          <div className="h-dvh bg-gray-900 flex items-center justify-center animate-simpleFadeIn" />
+        }>
+          <ImageEditor 
+            initialImage={selectedImage} 
+            onReset={handleReset}
+          />
+        </Suspense>
+      )}
+    </>
   )
 }
