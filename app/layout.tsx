@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+// import { Inter } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+// const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: '目線入れ',
@@ -37,7 +37,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja">
-      <body className={inter.className}>{children}</body>
+      <head>
+        <link rel="preload" href="/font-subsets/Mamelon-3.5-Hi-Regular-subset-8dd4370b60e374eb972ea69c34bd20eb.woff2" as="font" type="font/woff2" />
+        <link rel="stylesheet" href="/Mamelon-3.5-Hi-Regular.css" />
+      </head>
+      <body>{children}</body>
     </html>
   )
 }

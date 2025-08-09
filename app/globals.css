@@ -11,6 +11,7 @@
 html, body {
   height: 100%;
   overflow: hidden;
+  font-family: "Mamelon-3.5-Hi-Regular";
 }
 
 @keyframes flash {
