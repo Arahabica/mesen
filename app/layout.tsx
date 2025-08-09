@@ -15,9 +15,9 @@ export const metadata: Metadata = {
     description: '画像に目線を入れることに特化したシンプルなアプリ',
     images: [
       {
-        url: '/ogp02.webp',
+        url: '/ogp03.webp',
         width: 1200,
-        height: 630,
+        height: 832,
         alt: '目線入れ',
       },
     ],
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: '目線入れ',
     description: '画像に目線を入れることに特化したシンプルなアプリ',
-    images: ['/ogp02.webp'],
+    images: ['/ogp03.webp'],
   },
 }
 
