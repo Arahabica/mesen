@@ -25,11 +25,12 @@ export default function LandingPage({ onImageSelect }: LandingPageProps) {
   return (
     <div className="h-dvh bg-white flex flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto">
-        <div className="px-4 py-8">
-          <div className="max-w-sm mx-auto">
-          <img 
-            src="/ogp.png" 
-            alt="目線入れアプリ" 
+        <div className="px-4 py-4 max-w-sm mx-auto">
+          <img
+            src="/mesen.webp"
+            alt="目線入れアプリ"
+            width={1024}
+            height={712}
             className="w-full h-auto object-contain mb-8"
           />
           <div className="text-center mb-8">
@@ -39,7 +40,7 @@ export default function LandingPage({ onImageSelect }: LandingPageProps) {
               究極シンプル目線入れアプリ
             </p>
           </div>
-          
+
           <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
             <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">こんな時に</h2>
             <div className="space-y-4">
@@ -63,7 +64,7 @@ export default function LandingPage({ onImageSelect }: LandingPageProps) {
               </div>
             </div>
           </div>
-          
+
           <button
             onClick={() => fileInputRef.current?.click()}
             className="w-full px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-lg font-semibold rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -77,14 +78,13 @@ export default function LandingPage({ onImageSelect }: LandingPageProps) {
             onChange={handleImageSelect}
             className="hidden"
           />
-          </div>
         </div>
       </div>
-      
+
       <footer className="flex-shrink-0 bg-gray-100 py-4 text-center">
-        <a 
-          href="https://x.com/Arahabica1" 
-          target="_blank" 
+        <a
+          href="https://x.com/Arahabica1"
+          target="_blank"
           rel="noopener noreferrer"
           className="text-gray-600 hover:text-gray-800 transition-colors duration-200"
         >
