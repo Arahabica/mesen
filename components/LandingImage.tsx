@@ -34,8 +34,8 @@ export default function LandingImage() {
         ref={imgRef}
         src="/mesen.webp"
         alt="目線入れアプリ"
-        width={1024}
-        height={712}
+        width={800}
+        height={557}
         className={imgClass}
         onLoad={onLoad}
         onError={(e) => console.error('Image failed to load:', e)}
