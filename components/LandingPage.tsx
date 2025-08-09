@@ -1,5 +1,6 @@
 import React, { useRef } from 'react'
 import { ImageData } from '@/types/editor'
+import LandingImage from './LandingImage'
 
 interface LandingPageProps {
   onImageSelect: (imageData: ImageData) => void
@@ -26,13 +27,7 @@ export default function LandingPage({ onImageSelect }: LandingPageProps) {
     <div className="h-dvh bg-white flex flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 py-4 max-w-sm mx-auto">
-          <img
-            src="/mesen.webp"
-            alt="目線入れアプリ"
-            width={1024}
-            height={712}
-            className="w-full h-auto object-contain mb-8"
-          />
+          <LandingImage />
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-800 mb-2">目線入れ</h1>
             <p className="text-lg text-gray-600">
