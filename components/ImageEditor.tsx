@@ -3,11 +3,12 @@
 import React, { useState, useRef, useCallback } from 'react'
 import CanvasEditor, { CanvasEditorRef } from './CanvasEditor'
 import InstructionTooltip from './InstructionTooltip'
+import FingerIndicator from './FingerIndicator'
 import { useDrawing } from '@/hooks/useDrawing'
 import { useZoomPan } from '@/hooks/useZoomPan'
 import { useTouch } from '@/hooks/useTouch'
 import { useInstructionTooltip } from '@/hooks/useInstructionTooltip'
-import { ImageSize, ImageData } from '@/types/editor'
+import { ImageSize, ImageData, Position } from '@/types/editor'
 import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS } from '@/constants/editor'
 
 interface ImageEditorProps {
@@ -21,6 +22,8 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const [imageSize, setImageSize] = useState<ImageSize>({ width: 0, height: 0 })
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
   const [canvasOpacity, setCanvasOpacity] = useState(1)
+  const [fingerPositions, setFingerPositions] = useState<Position[]>([])
+  const [showFingerIndicator, setShowFingerIndicator] = useState(false)
   
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasEditorRef = useRef<CanvasEditorRef>(null)
@@ -138,6 +141,14 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
     
+    // Update finger positions
+    const positions = Array.from(e.touches).map(touch => ({
+      x: touch.clientX,
+      y: touch.clientY
+    }))
+    setFingerPositions(positions)
+    setShowFingerIndicator(true)
+    
     // Disable interactions during animation
     if (zoomPan.isAnimating) {
       return
@@ -221,6 +232,13 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     // e.preventDefault()
     
+    // Update finger positions
+    const positions = Array.from(e.touches).map(touch => ({
+      x: touch.clientX,
+      y: touch.clientY
+    }))
+    setFingerPositions(positions)
+    
     // Disable interactions during animation
     if (zoomPan.isAnimating) {
       return
@@ -295,6 +313,19 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
+    
+    // Update finger positions
+    const positions = Array.from(e.touches).map(touch => ({
+      x: touch.clientX,
+      y: touch.clientY
+    }))
+    setFingerPositions(positions)
+    
+    // Hide finger indicator when all touches end
+    if (e.touches.length === 0) {
+      setShowFingerIndicator(false)
+    }
+    
     touch.endTouch(e.touches)
     
     if (touch.isQuickTap() && e.changedTouches[0] && !touch.isPinching) {
@@ -456,6 +487,10 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       <InstructionTooltip
         visible={showInstructionTooltip}
         onHide={hideInstruction}
+      />
+      <FingerIndicator
+        visible={showFingerIndicator}
+        positions={fingerPositions}
       />
     </>
   )
