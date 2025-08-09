@@ -10,6 +10,24 @@ export const metadata: Metadata = {
   icons: {
     icon: '/favicon.png',
   },
+  openGraph: {
+    title: '目線入れ',
+    description: '画像に目線を入れることに特化したシンプルなアプリ',
+    images: [
+      {
+        url: '/ogp02.webp',
+        width: 1200,
+        height: 630,
+        alt: '目線入れ',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '目線入れ',
+    description: '画像に目線を入れることに特化したシンプルなアプリ',
+    images: ['/ogp02.webp'],
+  },
 }
 
 export default function RootLayout({
@@ -18,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="ja">
       <body className={inter.className}>{children}</body>
     </html>
   )
