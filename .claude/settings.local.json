@@ -12,12 +12,11 @@
       "Bash(npm run typecheck:*)",
       "Bash(grep:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(rm:*)",
       "Bash(npx eslint:*)",
       "Bash(npm run lint)",
       "Bash(rg:*)",
       "Bash(npx tsc:*)",
-      "Bash(git add:*)"
+      "Bash(find:*)"
     ],
     "deny": []
   }
