@@ -22,6 +22,7 @@ export default function LandingPage({ onImageSelect, isVisible = true }: Landing
       }
       reader.readAsDataURL(file)
     }
+    e.target.value = ''
   }
 
   return (
