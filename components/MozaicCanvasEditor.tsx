@@ -4,6 +4,7 @@ import { LoupeState, DrawingMode } from '@/types/editor'
 import { MozaicArea, Rectangle } from '@/types/mozaic'
 import Loupe from './Loupe'
 import TemporalTooltip from './TemporalTooltip'
+import { applyMosaicToArea } from '@/utils/mosaic'
 
 interface MozaicCanvasEditorProps {
   image: string
@@ -88,52 +89,7 @@ const MozaicCanvasEditor = forwardRef<MozaicCanvasEditorRef, MozaicCanvasEditorP
 
     // Apply mosaic effect for each rectangle
     rectangles.forEach(rect => {
-      // Calculate mosaic size based on image dimensions
-      const mosaicWidth = Math.min(canvasWidth, canvasHeight) * 0.03
-      const mosaicHeight = mosaicWidth // Square mosaic blocks
-      
-      // Get actual rectangle boundaries
-      const rectMinX = Math.min(rect.start.x, rect.end.x)
-      const rectMaxX = Math.max(rect.start.x, rect.end.x)
-      const rectMinY = Math.min(rect.start.y, rect.end.y)
-      const rectMaxY = Math.max(rect.start.y, rect.end.y)
-      
-      // Calculate mosaic grid boundaries (extend to include partial blocks)
-      const gridMinX = Math.floor(rectMinX / mosaicWidth) * mosaicWidth
-      const gridMaxX = Math.ceil(rectMaxX / mosaicWidth) * mosaicWidth
-      const gridMinY = Math.floor(rectMinY / mosaicHeight) * mosaicHeight
-      const gridMaxY = Math.ceil(rectMaxY / mosaicHeight) * mosaicHeight
-
-      // Process each mosaic block
-      for (let x = gridMinX; x < gridMaxX; x += mosaicWidth) {
-        for (let y = gridMinY; y < gridMaxY; y += mosaicHeight) {
-          // Calculate the intersection of mosaic block and selection rectangle
-          const blockStartX = Math.max(x, rectMinX)
-          const blockEndX = Math.min(x + mosaicWidth, rectMaxX)
-          const blockStartY = Math.max(y, rectMinY)
-          const blockEndY = Math.min(y + mosaicHeight, rectMaxY)
-          
-          // Skip if no intersection
-          if (blockStartX >= blockEndX || blockStartY >= blockEndY) continue
-          
-          // Get the block dimensions
-          const blockWidth = blockEndX - blockStartX
-          const blockHeight = blockEndY - blockStartY
-          
-          // Sample from the center of the full mosaic block for color
-          const sampleX = Math.min(x + mosaicWidth / 2, canvasWidth - 1)
-          const sampleY = Math.min(y + mosaicHeight / 2, canvasHeight - 1)
-          const sampleWidth = Math.min(1, canvasWidth - sampleX)
-          const sampleHeight = Math.min(1, canvasHeight - sampleY)
-          
-          const imageData = sourceCtx.getImageData(sampleX, sampleY, sampleWidth, sampleHeight)
-          const avgColor = getAverageColor(imageData)
-          
-          // Fill only the intersection area
-          destCtx.fillStyle = `rgb(${avgColor.r},${avgColor.g},${avgColor.b})`
-          destCtx.fillRect(blockStartX, blockStartY, blockWidth, blockHeight)
-        }
-      }
+      applyMosaicToArea(destCtx, rect, canvasWidth, canvasHeight)
     })
   }, [])
 
@@ -397,23 +353,5 @@ const MozaicCanvasEditor = forwardRef<MozaicCanvasEditorRef, MozaicCanvasEditorP
 
 MozaicCanvasEditor.displayName = 'MozaicCanvasEditor'
 
-// Helper function to get average color of image data
-function getAverageColor(imageData: globalThis.ImageData): { r: number; g: number; b: number } {
-  let r = 0, g = 0, b = 0
-  let count = 0
-
-  for (let i = 0; i < imageData.data.length; i += 4) {
-    r += imageData.data[i]
-    g += imageData.data[i + 1]
-    b += imageData.data[i + 2]
-    count++
-  }
-
-  return {
-    r: Math.floor(r / count),
-    g: Math.floor(g / count),
-    b: Math.floor(b / count)
-  }
-}
 
 export default MozaicCanvasEditor

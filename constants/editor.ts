@@ -50,3 +50,6 @@ export const ZOOM_ANIMATION_DURATION = 200  // ズームアニメーション時
 // 線の判定範囲設定
 export const LINE_HIT_EXPANSION = 25        // 線のタップ判定拡張範囲（px）
 export const LINE_ZOOM_EXCLUSION_RADIUS = 100  // 線の周囲でズームを無効化する範囲（px）
+
+// モザイク設定
+export const MOSAIC_SIZE_RATIO = 0.03       // 画像の短辺に対するモザイクブロックサイズの比率
