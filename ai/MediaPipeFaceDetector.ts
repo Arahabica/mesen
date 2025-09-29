@@ -22,6 +22,7 @@ export class MediaPipeFaceDetector implements FaceDetectorContract {
   private fullRangeDetector: FaceDetector | null = null
   private readonly initialized: Promise<void>
   private readonly options: Required<FaceDetectorOptions>
+  private readonly modelCache = new Map<string, Uint8Array>()
 
   private readonly LOCAL_WASM_PATH = '/mediapipe/wasm'
   private readonly SHORT_RANGE_MODEL_PATH = '/models/face_detection_short_range.task'
@@ -152,8 +153,13 @@ export class MediaPipeFaceDetector implements FaceDetectorContract {
     label: 'short-range' | 'full-range',
     required: boolean
   ): Promise<Uint8Array | null> {
+    const cached = this.modelCache.get(modelPath)
+    if (cached) {
+      return cached
+    }
+
     try {
-      const response = await fetch(modelPath, { cache: 'no-store' })
+      const response = await fetch(modelPath)
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`)
       }
@@ -162,8 +168,9 @@ export class MediaPipeFaceDetector implements FaceDetectorContract {
       if (buffer.byteLength === 0) {
         throw new Error('Model file is empty')
       }
-
-      return new Uint8Array(buffer)
+      const payload = new Uint8Array(buffer)
+      this.modelCache.set(modelPath, payload)
+      return payload
     } catch (error) {
       if (required) {
         throw new Error(
