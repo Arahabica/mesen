@@ -301,7 +301,6 @@ class MediaPipeSetup {
     const lines = [
       '# MediaPipe assets',
       'public/models/face_detection_short_range.task',
-      'public/models/face_detection_full_range.task',
       'public/mediapipe/wasm/'
     ]
 

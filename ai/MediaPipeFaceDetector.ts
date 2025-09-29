@@ -12,21 +12,14 @@ import type {
   Eye
 } from './types'
 
-interface DetectorRunResult {
-  detections: Detection[]
-  label: 'short-range' | 'full-range'
-}
-
 export class MediaPipeFaceDetector implements FaceDetectorContract {
   private shortRangeDetector: FaceDetector | null = null
-  private fullRangeDetector: FaceDetector | null = null
   private readonly initialized: Promise<void>
   private readonly options: Required<FaceDetectorOptions>
   private readonly modelCache = new Map<string, Uint8Array>()
 
   private readonly LOCAL_WASM_PATH = '/mediapipe/wasm'
   private readonly SHORT_RANGE_MODEL_PATH = '/models/face_detection_short_range.task'
-  private readonly FULL_RANGE_MODEL_PATH = '/models/face_detection_full_range.task'
 
   constructor(options: FaceDetectorOptions = {}) {
     this.options = {
@@ -48,13 +41,6 @@ export class MediaPipeFaceDetector implements FaceDetectorContract {
       'short-range',
       true
     )
-
-    this.fullRangeDetector = await this.createDetector(
-      wasmFileset,
-      this.FULL_RANGE_MODEL_PATH,
-      'full-range',
-      false
-    )
   }
 
   private async resolveVisionWasm() {
@@ -72,7 +58,7 @@ export class MediaPipeFaceDetector implements FaceDetectorContract {
   private async createDetector(
     wasmFileset: Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>>,
     modelPath: string,
-    label: 'short-range' | 'full-range',
+    label: 'short-range',
     required: boolean
   ): Promise<FaceDetector | null> {
     const modelBuffer = await this.loadModelAsset(modelPath, label, required)
@@ -150,7 +136,7 @@ export class MediaPipeFaceDetector implements FaceDetectorContract {
 
   private async loadModelAsset(
     modelPath: string,
-    label: 'short-range' | 'full-range',
+    label: 'short-range',
     required: boolean
   ): Promise<Uint8Array | null> {
     const cached = this.modelCache.get(modelPath)
@@ -201,37 +187,12 @@ export class MediaPipeFaceDetector implements FaceDetectorContract {
     const image = await this.createImageFromBlob(blob)
 
     try {
-      const shortRange = await this.runDetector(
-        this.shortRangeDetector,
-        image,
-        'short-range'
-      )
-
-      let mergedDetections = shortRange.detections
-      const usedModels: Array<'short-range' | 'full-range'> = []
-
-      if (mergedDetections.length > 0) {
-        usedModels.push(shortRange.label)
-      }
-
-      if (this.fullRangeDetector && mergedDetections.length < this.options.maxFaces) {
-        const fullRange = await this.runDetector(
-          this.fullRangeDetector,
-          image,
-          'full-range'
-        )
-
-        if (fullRange.detections.length > 0) {
-          mergedDetections = this.mergeDetections(mergedDetections, fullRange.detections)
-          usedModels.push(fullRange.label)
-        }
-      }
-
-      const limitedDetections = this.limitDetectionsToMaxFaces(mergedDetections)
+      const result = this.shortRangeDetector.detect(image)
+      const detections = result.detections ?? []
+      const limitedDetections = this.limitDetectionsToMaxFaces(detections)
       const faces = this.convertDetections(limitedDetections, image.width, image.height)
 
       if (this.options.debug) {
-        console.log('[FaceDetector] Models used for detection:', usedModels)
         console.log(`[FaceDetector] detected ${faces.length} face(s)`) // eslint-disable-line no-console
       }
 
@@ -241,43 +202,6 @@ export class MediaPipeFaceDetector implements FaceDetectorContract {
         image.close()
       }
     }
-  }
-
-  private async runDetector(
-    detector: FaceDetector,
-    image: ImageBitmap | HTMLImageElement,
-    label: 'short-range' | 'full-range'
-  ): Promise<DetectorRunResult> {
-    const result = detector.detect(image)
-    return {
-      detections: result.detections ?? [],
-      label
-    }
-  }
-
-  private mergeDetections(base: Detection[], fallback: Detection[]): Detection[] {
-    const merged = [...base]
-
-    fallback.forEach((candidate) => {
-      const candidateBox = candidate.boundingBox
-      if (!candidateBox) {
-        return
-      }
-
-      const overlapping = merged.some((existing) => {
-        const existingBox = existing.boundingBox
-        if (!existingBox) {
-          return false
-        }
-        return this.computeIoU(existingBox, candidateBox) > 0.3
-      })
-
-      if (!overlapping) {
-        merged.push(candidate)
-      }
-    })
-
-    return merged
   }
 
   private limitDetectionsToMaxFaces(detections: Detection[]): Detection[] {
@@ -394,24 +318,6 @@ export class MediaPipeFaceDetector implements FaceDetectorContract {
     }
   }
 
-  private computeIoU(a: BoundingBox, b: BoundingBox): number {
-    const xA = Math.max(a.originX, b.originX)
-    const yA = Math.max(a.originY, b.originY)
-    const xB = Math.min(a.originX + a.width, b.originX + b.width)
-    const yB = Math.min(a.originY + a.height, b.originY + b.height)
-
-    const intersection = Math.max(0, xB - xA) * Math.max(0, yB - yA)
-    const areaA = a.width * a.height
-    const areaB = b.width * b.height
-    const union = areaA + areaB - intersection
-
-    if (union <= 0) {
-      return 0
-    }
-
-    return intersection / union
-  }
-
   private async createImageFromBlob(
     blob: Blob
   ): Promise<ImageBitmap | HTMLImageElement> {
@@ -441,11 +347,6 @@ export class MediaPipeFaceDetector implements FaceDetectorContract {
     if (this.shortRangeDetector) {
       this.shortRangeDetector.close()
       this.shortRangeDetector = null
-    }
-
-    if (this.fullRangeDetector) {
-      this.fullRangeDetector.close()
-      this.fullRangeDetector = null
     }
   }
 }
