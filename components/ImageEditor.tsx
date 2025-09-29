@@ -9,8 +9,8 @@ import { useTouch } from '@/hooks/useTouch'
 import { useInstructionTooltip } from '@/hooks/useInstructionTooltip'
 import { ImageSize, ImageData } from '@/types/editor'
 import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS } from '@/constants/editor'
-import { MediaPipeFaceDetector } from '@/ai/MediaPipeFaceDetector'
 import type { Face } from '@/ai/types'
+import { MediaPipeFaceDetectorLazy } from '@/ai/MediaPipeFaceDetectorLazy'
 
 interface ImageEditorProps {
   initialImage: ImageData
@@ -31,7 +31,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const mouseHasMovedRef = useRef<boolean>(false)
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
   const initialTouchRef = useRef<{ x: number; y: number } | null>(null)
-  const faceDetectorRef = useRef<MediaPipeFaceDetector | null>(null)
+  const faceDetectorRef = useRef<MediaPipeFaceDetectorLazy | null>(null)
   
   const drawing = useDrawing(lineThickness, imageSize.width, imageSize.height)
   const zoomPan = useZoomPan(imageSize, containerRef)
@@ -39,12 +39,11 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const { showInstructionTooltip, showInstruction, hideInstruction } = useInstructionTooltip()
 
   useEffect(() => {
-    const detector = new MediaPipeFaceDetector({
+    faceDetectorRef.current = new MediaPipeFaceDetectorLazy({
       maxFaces: 12,
       minDetectionConfidence: 0.08,
       debug: true
     })
-    faceDetectorRef.current = detector
 
     return () => {
       faceDetectorRef.current?.dispose().catch((error) => {
@@ -106,14 +105,13 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       return
     }
 
-    const detector = faceDetectorRef.current
-    if (!detector) {
-      console.warn('[FaceDetector] Detector not initialized')
-      return
-    }
-
     try {
       setIsDetecting(true)
+      const detector = faceDetectorRef.current
+      if (!detector) {
+        console.warn('[FaceDetector] Detector not initialized')
+        return
+      }
       const response = await fetch(imageData.dataURL)
       const blob = await response.blob()
       const faces = await detector.detect(blob)
