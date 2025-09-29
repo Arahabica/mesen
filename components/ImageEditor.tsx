@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import CanvasEditor, { CanvasEditorRef } from './CanvasEditor'
 import InstructionTooltip from './InstructionTooltip'
 import { useDrawing } from '@/hooks/useDrawing'
@@ -9,6 +9,8 @@ import { useTouch } from '@/hooks/useTouch'
 import { useInstructionTooltip } from '@/hooks/useInstructionTooltip'
 import { ImageSize, ImageData } from '@/types/editor'
 import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS } from '@/constants/editor'
+import { MediaPipeFaceDetector } from '@/ai/MediaPipeFaceDetector'
+import type { Face } from '@/ai/types'
 
 interface ImageEditorProps {
   initialImage: ImageData
@@ -21,6 +23,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const [imageSize, setImageSize] = useState<ImageSize>({ width: 0, height: 0 })
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
   const [canvasOpacity, setCanvasOpacity] = useState(1)
+  const [isDetecting, setIsDetecting] = useState(false)
   
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasEditorRef = useRef<CanvasEditorRef>(null)
@@ -28,11 +31,28 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const mouseHasMovedRef = useRef<boolean>(false)
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
   const initialTouchRef = useRef<{ x: number; y: number } | null>(null)
+  const faceDetectorRef = useRef<MediaPipeFaceDetector | null>(null)
   
   const drawing = useDrawing(lineThickness, imageSize.width, imageSize.height)
   const zoomPan = useZoomPan(imageSize, containerRef)
   const touch = useTouch()
   const { showInstructionTooltip, showInstruction, hideInstruction } = useInstructionTooltip()
+
+  useEffect(() => {
+    const detector = new MediaPipeFaceDetector({
+      maxFaces: 12,
+      minDetectionConfidence: 0.08,
+      debug: true
+    })
+    faceDetectorRef.current = detector
+
+    return () => {
+      faceDetectorRef.current?.dispose().catch((error) => {
+        console.warn('Failed to dispose FaceDetector', error)
+      })
+      faceDetectorRef.current = null
+    }
+  }, [])
 
 
   // Calculate dynamic thickness based on current viewport and zoom
@@ -57,6 +77,53 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
     // Show instruction tooltip with localStorage-based control
     showInstruction()
   }, [showInstruction])
+
+  const logFaces = useCallback((faces: Face[], filename: string) => {
+    const prefix = '[FaceDetector]'
+
+    if (faces.length === 0) {
+      console.log(`${prefix} ${filename}: no faces detected`)
+      return
+    }
+
+    console.log(`${prefix} ${filename}: detected ${faces.length} face(s)`)
+
+    faces.forEach((face, index) => {
+      console.log(
+        `${prefix} Face ${index + 1} bounds -> x: ${face.x}, y: ${face.y}, width: ${face.width}, height: ${face.height}`
+      )
+
+      face.eyes.forEach((eye, eyeIndex) => {
+        const label = eyeIndex === 0 ? 'leftEye' : 'rightEye'
+        console.log(`${prefix} Face ${index + 1} ${label} -> x: ${eye.x}, y: ${eye.y}`)
+      })
+    })
+  }, [])
+
+  const handleDetectFaces = useCallback(async () => {
+    if (!imageData) {
+      console.warn('[FaceDetector] No image loaded')
+      return
+    }
+
+    const detector = faceDetectorRef.current
+    if (!detector) {
+      console.warn('[FaceDetector] Detector not initialized')
+      return
+    }
+
+    try {
+      setIsDetecting(true)
+      const response = await fetch(imageData.dataURL)
+      const blob = await response.blob()
+      const faces = await detector.detect(blob)
+      logFaces(faces, imageData.filename)
+    } catch (error) {
+      console.error('[FaceDetector] Detection failed', error)
+    } finally {
+      setIsDetecting(false)
+    }
+  }, [imageData, logFaces])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const { clientX, clientY } = e
@@ -450,6 +517,8 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
             onDownload={download}
             onClose={closeImage}
             onResetView={resetView}
+            onDetectFaces={handleDetectFaces}
+            isDetectingFaces={isDetecting}
           />
         </div>
       )}

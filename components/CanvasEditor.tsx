@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle, useCallback } from 'react'
-import { X, RotateCcw, Download, Expand } from 'lucide-react'
+import { X, RotateCcw, Download, Expand, Sparkles } from 'lucide-react'
 import { Line, LoupeState, DrawingMode } from '@/types/editor'
 import Loupe from './Loupe'
 import TemporalTooltip from './TemporalTooltip'
@@ -28,6 +28,8 @@ interface CanvasEditorProps {
   onDownload: () => void
   onClose: () => void
   onResetView: () => void
+  onDetectFaces: () => void
+  isDetectingFaces: boolean
 }
 
 export interface CanvasEditorRef {
@@ -57,7 +59,9 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   onUndo,
   onDownload,
   onClose,
-  onResetView
+  onResetView,
+  onDetectFaces,
+  isDetectingFaces
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const baseCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -245,6 +249,20 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
       </button>
       
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 z-10">
+        <div className="relative">
+          <button
+            onClick={onDetectFaces}
+            disabled={isDetectingFaces || !isImageLoaded}
+            className={`w-12 h-12 rounded-full flex items-center justify-center bg-indigo-600 text-white transition-all ${
+              isDetectingFaces || !isImageLoaded
+                ? 'opacity-40 cursor-not-allowed'
+                : 'hover:bg-indigo-500'
+            } ${isDetectingFaces ? 'animate-pulse' : ''}`}
+            aria-label="AIで顔を検出"
+          >
+            <Sparkles size={24} />
+          </button>
+        </div>
         <div className="relative">
           <button
             onClick={onUndo}

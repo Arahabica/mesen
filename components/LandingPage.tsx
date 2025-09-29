@@ -1,8 +1,6 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useRef } from 'react'
 import { ImageData } from '@/types/editor'
 import LandingImage from './LandingImage'
-import { MediaPipeFaceDetector } from '@/ai/MediaPipeFaceDetector'
-import type { Face } from '@/ai/types'
 
 interface LandingPageProps {
   onImageSelect: (imageData: ImageData) => void
@@ -11,44 +9,6 @@ interface LandingPageProps {
 
 export default function LandingPage({ onImageSelect, isVisible = true }: LandingPageProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const faceDetectorRef = useRef<MediaPipeFaceDetector | null>(null)
-
-  useEffect(() => {
-    faceDetectorRef.current = new MediaPipeFaceDetector({
-      maxFaces: 12,
-      minDetectionConfidence: 0.08,
-      debug: true
-    })
-
-    return () => {
-      faceDetectorRef.current?.dispose().catch((error) => {
-        console.warn('Failed to dispose FaceDetector', error)
-      })
-      faceDetectorRef.current = null
-    }
-  }, [])
-
-  const logFaces = (faces: Face[], filename: string) => {
-    const prefix = '[FaceDetector]'
-
-    if (faces.length === 0) {
-      console.log(`${prefix} ${filename}: no faces detected`)
-      return
-    }
-
-    console.log(`${prefix} ${filename}: detected ${faces.length} face(s)`)
-
-    faces.forEach((face, index) => {
-      console.log(
-        `${prefix} Face ${index + 1} bounds -> x: ${face.x}, y: ${face.y}, width: ${face.width}, height: ${face.height}`
-      )
-
-      face.eyes.forEach((eye, eyeIndex) => {
-        const label = eyeIndex === 0 ? 'leftEye' : 'rightEye'
-        console.log(`${prefix} Face ${index + 1} ${label} -> x: ${eye.x}, y: ${eye.y}`)
-      })
-    })
-  }
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target
@@ -56,19 +16,6 @@ export default function LandingPage({ onImageSelect, isVisible = true }: Landing
     input.value = ''
 
     if (file) {
-      const detector = faceDetectorRef.current
-
-      if (detector) {
-        detector
-          .detect(file)
-          .then((faces) => logFaces(faces, file.name))
-          .catch((error) => {
-            console.error('[FaceDetector] Detection failed', error)
-          })
-      } else {
-        console.warn('[FaceDetector] Detector not initialized')
-      }
-
       const reader = new FileReader()
       reader.onload = (e) => {
         onImageSelect({
