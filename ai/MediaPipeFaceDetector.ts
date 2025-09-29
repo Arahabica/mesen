@@ -17,6 +17,7 @@ export class MediaPipeFaceDetector implements FaceDetectorContract {
   private readonly initialized: Promise<void>
   private readonly options: Required<FaceDetectorOptions>
   private readonly modelCache = new Map<string, Uint8Array>()
+  private gpuCanvas: HTMLCanvasElement | OffscreenCanvas | null = null
 
   private readonly LOCAL_WASM_PATH = '/mediapipe/wasm'
   private readonly SHORT_RANGE_MODEL_PATH = '/models/face_detection_short_range.task'
@@ -67,71 +68,103 @@ export class MediaPipeFaceDetector implements FaceDetectorContract {
     }
 
     try {
-      const detector = await FaceDetector.createFromModelBuffer(wasmFileset, modelBuffer)
+      const gpuCanvas = this.getGpuCanvas()
 
-      await this.configureDetector(detector, 'GPU')
+      if (gpuCanvas) {
+        try {
+          const detector = await FaceDetector.createFromOptions(wasmFileset, {
+            baseOptions: {
+              modelAssetBuffer: modelBuffer,
+              delegate: 'GPU'
+            },
+            runningMode: 'IMAGE',
+            minDetectionConfidence: this.options.minDetectionConfidence,
+            canvas: gpuCanvas
+          })
 
-      if (this.options.debug) {
-        console.log(`MediaPipe FaceDetector (${label}) initialized using model: ${modelPath}`)
+          if (this.options.debug) {
+            console.log(`MediaPipe FaceDetector (${label}) initialized (GPU) using model: ${modelPath}`)
+          }
+
+          return detector
+        } catch (gpuError) {
+          if (this.options.debug) {
+            console.warn(
+              `FaceDetector (${label}) could not initialize on GPU. Falling back to CPU.`,
+              gpuError
+            )
+          }
+        }
+      } else if (this.options.debug) {
+        console.warn('WebGL2 context unavailable. Using CPU delegate for FaceDetector.')
       }
 
-      return detector
+      const cpuDetector = await FaceDetector.createFromOptions(wasmFileset, {
+        baseOptions: {
+          modelAssetBuffer: modelBuffer,
+          delegate: 'CPU'
+        },
+        runningMode: 'IMAGE',
+        minDetectionConfidence: this.options.minDetectionConfidence
+      })
+
+      if (this.options.debug) {
+        console.log(`MediaPipe FaceDetector (${label}) initialized (CPU) using model: ${modelPath}`)
+      }
+
+      return cpuDetector
     } catch (error) {
       if (required) {
-        throw error
+        throw new Error(
+          `Failed to initialize FaceDetector (${label}). Ensure ${modelPath} exists under public/models. ` +
+            'Run `npm run setup` to download MediaPipe assets. ' +
+            `Original error: ${error}`
+        )
       }
 
       if (this.options.debug) {
         console.warn(
-          `Optional FaceDetector (${label}) failed to initialize (GPU). Retrying on CPU...`,
+          `Optional FaceDetector (${label}) could not be created. Continuing without it.`,
           error
         )
       }
 
-      try {
-        const cpuDetector = await FaceDetector.createFromModelBuffer(
-          wasmFileset,
-          modelBuffer
-        )
-
-        await this.configureDetector(cpuDetector, 'CPU')
-
-        if (this.options.debug) {
-          console.log(
-            `MediaPipe FaceDetector (${label}) initialized on CPU using model: ${modelPath}`
-          )
-        }
-
-        return cpuDetector
-      } catch (cpuError) {
-        if (required) {
-          throw new Error(
-            `Failed to initialize FaceDetector (${label}). Ensure ${modelPath} exists under public/models. ` +
-              'Run `npm run setup` to download MediaPipe assets. ' +
-              `Original error: ${cpuError}`
-          )
-        }
-
-        if (this.options.debug) {
-          console.warn(
-            `Optional FaceDetector (${label}) could not be created on CPU. Continuing without it.`,
-            cpuError
-          )
-        }
-
-        return null
-      }
+      return null
     }
   }
 
-  private async configureDetector(detector: FaceDetector, delegate: 'GPU' | 'CPU') {
-    await detector.setOptions({
-      baseOptions: {
-        delegate
-      },
-      runningMode: 'IMAGE',
-      minDetectionConfidence: this.options.minDetectionConfidence
-    })
+  private getGpuCanvas(): HTMLCanvasElement | OffscreenCanvas | null {
+    if (this.gpuCanvas) {
+      return this.gpuCanvas
+    }
+
+    try {
+      if (typeof OffscreenCanvas !== 'undefined') {
+        const offscreen = new OffscreenCanvas(4, 4)
+        const gl = offscreen.getContext('webgl2') ?? offscreen.getContext('webgl')
+        if (gl) {
+          this.gpuCanvas = offscreen
+          return this.gpuCanvas
+        }
+      }
+    } catch (error) {
+      if (this.options.debug) {
+        console.warn('Failed to create OffscreenCanvas for GPU delegate.', error)
+      }
+    }
+
+    if (typeof document !== 'undefined') {
+      const canvas = document.createElement('canvas')
+      canvas.width = 4
+      canvas.height = 4
+      const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl')
+      if (gl) {
+        this.gpuCanvas = canvas
+        return this.gpuCanvas
+      }
+    }
+
+    return null
   }
 
   private async loadModelAsset(
