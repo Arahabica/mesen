@@ -8,6 +8,9 @@ interface CanvasEditorProps {
   image: string
   lines: Line[]
   currentLine: Line | null
+  animatingLine: Line | null
+  animationProgress: number
+  greenLines: Line[]
   scale: number
   position: { x: number; y: number }
   lineThickness: number
@@ -17,6 +20,7 @@ interface CanvasEditorProps {
   isZoomInitialized: boolean
   isAtInitialScale: boolean
   showAiTooltipTrigger: boolean
+  isAiDetectionLine: boolean
   getCanvasCoordinates: (screenX: number, screenY: number) => { x: number; y: number }
   onImageLoad: (width: number, height: number) => void
   onMouseDown: (e: React.MouseEvent) => void
@@ -41,6 +45,9 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   image,
   lines,
   currentLine,
+  animatingLine,
+  animationProgress,
+  greenLines,
   scale,
   position,
   lineThickness,
@@ -50,6 +57,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   isZoomInitialized,
   isAtInitialScale,
   showAiTooltipTrigger,
+  isAiDetectionLine,
   getCanvasCoordinates,
   onImageLoad,
   onMouseDown,
@@ -122,23 +130,26 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   // Handle redraw for confirmed lines only
   useEffect(() => {
     if (!isImageLoaded) return
-    
+
+    // Skip if animating line is present (it will be handled by the other useEffect)
+    if (animatingLine || greenLines.length > 0) return
+
     const canvas = canvasRef.current
     const baseCanvas = baseCanvasRef.current
     if (!canvas || !baseCanvas) return
-    
+
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    
+
     // Copy base canvas (image) to main canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.drawImage(baseCanvas, 0, 0)
-    
-    // Draw only confirmed lines
+
+    // Draw only confirmed lines (black)
     ctx.strokeStyle = 'black'
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-    
+
     lines.forEach(line => {
       ctx.lineWidth = line.thickness
       ctx.beginPath()
@@ -146,28 +157,28 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
       ctx.lineTo(line.end.x, line.end.y)
       ctx.stroke()
     })
-  }, [lines, isImageLoaded])
+  }, [lines, isImageLoaded, animatingLine, greenLines])
 
-  // Handle current line drawing (real-time)
+  // Handle current line drawing (real-time), animating line, and green lines
   useEffect(() => {
-    if (!currentLine || !isImageLoaded) return
-    
+    if ((!currentLine && !animatingLine && greenLines.length === 0) || !isImageLoaded) return
+
     const canvas = canvasRef.current
     const baseCanvas = baseCanvasRef.current
     if (!canvas || !baseCanvas) return
-    
+
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    
+
     // Redraw base + confirmed lines
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.drawImage(baseCanvas, 0, 0)
-    
-    ctx.strokeStyle = 'black'
+
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-    
-    // Draw confirmed lines
+
+    // Draw confirmed lines (black)
+    ctx.strokeStyle = 'black'
     lines.forEach(line => {
       ctx.lineWidth = line.thickness
       ctx.beginPath()
@@ -175,14 +186,59 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
       ctx.lineTo(line.end.x, line.end.y)
       ctx.stroke()
     })
-    
-    // Draw current line
-    ctx.lineWidth = currentLine.thickness
-    ctx.beginPath()
-    ctx.moveTo(currentLine.start.x, currentLine.start.y)
-    ctx.lineTo(currentLine.end.x, currentLine.end.y)
-    ctx.stroke()
-  }, [currentLine, lines, isImageLoaded])
+
+    // Draw green lines (completed animation but not yet converted to black)
+    ctx.strokeStyle = '#00ff00'
+    ctx.shadowBlur = 10
+    ctx.shadowColor = '#00ff00'
+    greenLines.forEach(line => {
+      ctx.lineWidth = line.thickness
+      ctx.beginPath()
+      ctx.moveTo(line.start.x, line.start.y)
+      ctx.lineTo(line.end.x, line.end.y)
+      ctx.stroke()
+    })
+    ctx.shadowBlur = 0
+
+    // Draw animating line (green, growing from start to end using dash offset)
+    if (animatingLine && animationProgress > 0) {
+      const { start, end, thickness } = animatingLine
+
+      // Calculate line length
+      const dx = end.x - start.x
+      const dy = end.y - start.y
+      const lineLength = Math.sqrt(dx * dx + dy * dy)
+
+      // Use dash array to create growing effect
+      const dashLength = lineLength * animationProgress
+      const gapLength = lineLength
+
+      ctx.strokeStyle = '#00ff00'
+      ctx.lineWidth = thickness
+      ctx.shadowBlur = 10
+      ctx.shadowColor = '#00ff00'
+      ctx.setLineDash([dashLength, gapLength])
+      ctx.lineDashOffset = 0
+      ctx.beginPath()
+      ctx.moveTo(start.x, start.y)
+      ctx.lineTo(end.x, end.y)
+      ctx.stroke()
+
+      // Reset dash settings
+      ctx.setLineDash([])
+      ctx.shadowBlur = 0
+    }
+
+    // Draw current line (black)
+    if (currentLine) {
+      ctx.strokeStyle = 'black'
+      ctx.lineWidth = currentLine.thickness
+      ctx.beginPath()
+      ctx.moveTo(currentLine.start.x, currentLine.start.y)
+      ctx.lineTo(currentLine.end.x, currentLine.end.y)
+      ctx.stroke()
+    }
+  }, [currentLine, animatingLine, animationProgress, greenLines, lines, isImageLoaded])
 
   // Vibration feedback for mode transitions
   useEffect(() => {
@@ -390,20 +446,32 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
             relativePosition={loupeState.relativePosition}
           />
         )}
-        {/* Thickness tooltip on line center */}
-        {showThicknessTooltip && lastConfirmedLineCenter && (
-          <TemporalTooltip
-            text="タップで太さを変えられます"
-            show={showThicknessTooltip}
-            duration={1200}
-            className="z-20"
-            onClose={onThicknessTooltipClose}
-            targetPosition={{
-              x: lastConfirmedLineCenter.x * scale + position.x,
-              y: lastConfirmedLineCenter.y * scale + position.y
-            }}
-            preferredPlacement="top"
-          />
+        {/* Thickness tooltip on line center or screen center for AI detection */}
+        {showThicknessTooltip && (
+          isAiDetectionLine ? (
+            <TemporalTooltip
+              text="タップで太さを変えられます"
+              show={showThicknessTooltip}
+              duration={1200}
+              className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"
+              onClose={onThicknessTooltipClose}
+            />
+          ) : (
+            lastConfirmedLineCenter && (
+              <TemporalTooltip
+                text="タップで太さを変えられます"
+                show={showThicknessTooltip}
+                duration={1200}
+                className="z-20"
+                onClose={onThicknessTooltipClose}
+                targetPosition={{
+                  x: lastConfirmedLineCenter.x * scale + position.x,
+                  y: lastConfirmedLineCenter.y * scale + position.y
+                }}
+                preferredPlacement="top"
+              />
+            )
+          )
         )}
       </div>
     </div>

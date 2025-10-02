@@ -31,6 +31,10 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const [showError, setShowError] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [showNoFace, setShowNoFace] = useState(false)
+  const [isAiDetectionLine, setIsAiDetectionLine] = useState(false)
+  const [animatingLine, setAnimatingLine] = useState<Line | null>(null)
+  const [animationProgress, setAnimationProgress] = useState(0)
+  const [greenLines, setGreenLines] = useState<Line[]>([])
   
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasEditorRef = useRef<CanvasEditorRef>(null)
@@ -232,15 +236,21 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
         return
       }
 
-      setDrawingLines(prev => {
-        const keyOf = (line: Line) => `${line.start.x}:${line.start.y}:${line.end.x}:${line.end.y}:${line.thickness}`
-        const existingKeys = new Set(prev.map(keyOf))
-        const uniqueLines = eyeLines.filter(line => !existingKeys.has(keyOf(line)))
-        if (uniqueLines.length === 0) {
-          return prev
-        }
-        return [...prev, ...uniqueLines]
-      })
+      // Mark as AI detection line for tooltip display
+      setIsAiDetectionLine(true)
+
+      // Filter out duplicate lines
+      const keyOf = (line: Line) => `${line.start.x}:${line.start.y}:${line.end.x}:${line.end.y}:${line.thickness}`
+      const existingKeys = new Set(drawing.lines.map(keyOf))
+      const uniqueLines = eyeLines.filter(line => !existingKeys.has(keyOf(line)))
+
+      if (uniqueLines.length === 0) {
+        // Remove handler after completion
+        window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+        setIsScanning(false)
+        setIsDetecting(false)
+        return
+      }
 
       // Remove handler after successful completion
       window.removeEventListener('unhandledrejection', handleUnhandledRejection)
@@ -248,6 +258,55 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       // Stop scanning immediately after detection completes
       setIsScanning(false)
       setIsDetecting(false)
+
+      // Animate lines one by one
+      const animateLines = async () => {
+        const animationDuration = 150 // AI検出の目線を引くアニメーション時間 0.15 seconds
+        const frameRate = 60 // 60fps
+        const frameInterval = 1000 / frameRate
+        const tempGreenLines: Line[] = []
+
+        for (let i = 0; i < uniqueLines.length; i++) {
+          const line = uniqueLines[i]
+
+          // Show green animating line
+          setAnimatingLine(line)
+
+          // Animate from 0 to 1 over animationDuration
+          const startTime = Date.now()
+
+          while (true) {
+            const elapsed = Date.now() - startTime
+            const progress = Math.min(elapsed / animationDuration, 1)
+
+            setAnimationProgress(progress)
+
+            if (progress >= 1) break
+
+            await new Promise(resolve => setTimeout(resolve, frameInterval))
+          }
+
+          // Clear animating line first
+          setAnimatingLine(null)
+          setAnimationProgress(0)
+
+          // Add to green lines (temporary)
+          tempGreenLines.push(line)
+          setGreenLines([...tempGreenLines])
+
+          // Small delay before next line
+          await new Promise(resolve => setTimeout(resolve, 50))
+        }
+
+        // Wait 1 second after all lines are drawn
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        // Convert all green lines to black
+        setDrawingLines(prev => [...prev, ...tempGreenLines])
+        setGreenLines([])
+      }
+
+      animateLines()
     } catch (error) {
       console.error('[FaceDetector] Detection failed', error)
       setErrorMessage('AI検出でエラーが発生しました')
@@ -263,10 +322,13 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
     mouseStartTimeRef.current = Date.now()
     setInitialMousePos({ x: clientX, y: clientY })
     mouseHasMovedRef.current = false
-    
+
+    // Reset AI detection flag when user draws manually
+    setIsAiDetectionLine(false)
+
     const coords = zoomPan.getCanvasCoordinates(clientX, clientY)
     const clickedLineIndex = drawing.findLineAtPoint(coords)
-    
+
     if (clickedLineIndex !== -1) {
       drawing.selectLine(clickedLineIndex, coords)
     } else {
@@ -278,7 +340,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
           drawing.startDrawing(coords, dynamicThickness)
         }
       }, LONG_PRESS_DURATION)
-      
+
       // Only start dragging if we're in move mode
       if (drawing.drawingMode === 'move') {
         zoomPan.startDragging(clientX, clientY)
@@ -337,12 +399,15 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
-    
+
     // Disable interactions during animation
     if (zoomPan.isAnimating) {
       return
     }
-    
+
+    // Reset AI detection flag when user draws manually
+    setIsAiDetectionLine(false)
+
     // Clear any existing modes when starting new touch
     drawing.resetMode()
     
@@ -630,6 +695,9 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
             image={imageData.dataURL}
             lines={drawing.lines}
             currentLine={drawing.currentLine}
+            animatingLine={animatingLine}
+            animationProgress={animationProgress}
+            greenLines={greenLines}
             scale={zoomPan.scale}
             position={zoomPan.position}
             lineThickness={lineThickness}
@@ -639,6 +707,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
             isZoomInitialized={zoomPan.isInitialized}
             isAtInitialScale={!zoomPan.isInitialized || zoomPan.isAtInitialView}
             showAiTooltipTrigger={showAiTooltip}
+            isAiDetectionLine={isAiDetectionLine}
             getCanvasCoordinates={zoomPan.getCanvasCoordinates}
             onImageLoad={handleImageLoad}
             onMouseDown={handleMouseDown}
