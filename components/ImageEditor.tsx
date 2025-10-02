@@ -3,12 +3,16 @@
 import React, { useState, useRef, useCallback } from 'react'
 import CanvasEditor, { CanvasEditorRef } from './CanvasEditor'
 import InstructionTooltip from './InstructionTooltip'
+import ErrorDialog from './ErrorDialog'
+import NoFaceDialog from './NoFaceDialog'
+import ScanningOverlay from './ScanningOverlay'
 import { useDrawing } from '@/hooks/useDrawing'
 import { useZoomPan } from '@/hooks/useZoomPan'
 import { useTouch } from '@/hooks/useTouch'
 import { useInstructionTooltip } from '@/hooks/useInstructionTooltip'
+import { useFaceDetection } from '@/hooks/useFaceDetection'
 import { ImageSize, ImageData } from '@/types/editor'
-import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS } from '@/constants/editor'
+import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, getThicknessOptions, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS, DELETE_ZONE_HEIGHT, DELETE_ZONE_ACTIVATION_DISTANCE } from '@/constants/editor'
 
 interface ImageEditorProps {
   initialImage: ImageData
@@ -21,19 +25,27 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const [imageSize, setImageSize] = useState<ImageSize>({ width: 0, height: 0 })
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
   const [canvasOpacity, setCanvasOpacity] = useState(1)
-  
+
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasEditorRef = useRef<CanvasEditorRef>(null)
   const mouseStartTimeRef = useRef<number>(0)
   const mouseHasMovedRef = useRef<boolean>(false)
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
   const initialTouchRef = useRef<{ x: number; y: number } | null>(null)
-  
+
   const drawing = useDrawing(lineThickness, imageSize.width, imageSize.height)
+  const setDrawingLines = drawing.setLines
   const zoomPan = useZoomPan(imageSize, containerRef)
   const touch = useTouch()
   const { showInstructionTooltip, showInstruction, hideInstruction } = useInstructionTooltip()
+  const [showAiTooltip, setShowAiTooltip] = useState(false)
 
+  const faceDetection = useFaceDetection({
+    imageSize,
+    thicknessOptions: getThicknessOptions(imageSize.width, imageSize.height).filter(option => option > 0),
+    existingLines: drawing.lines,
+    onLinesAdd: (lines) => setDrawingLines(prev => [...prev, ...lines])
+  })
 
   // Calculate dynamic thickness based on current viewport and zoom
   const calculateDynamicThickness = useCallback(() => {
@@ -58,17 +70,36 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
     showInstruction()
   }, [showInstruction])
 
+  const handleDetectFaces = useCallback(async () => {
+    if (!imageData) {
+      console.warn('[FaceDetector] No image loaded')
+      return
+    }
+
+    faceDetection.setIsAiDetectionLine(true)
+    await faceDetection.detectFaces(imageData.dataURL, imageData.filename)
+  }, [imageData, faceDetection])
+
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const { clientX, clientY } = e
     mouseStartTimeRef.current = Date.now()
     setInitialMousePos({ x: clientX, y: clientY })
     mouseHasMovedRef.current = false
-    
+
+    // Reset AI detection flag when user draws manually
+    faceDetection.setIsAiDetectionLine(false)
+
     const coords = zoomPan.getCanvasCoordinates(clientX, clientY)
     const clickedLineIndex = drawing.findLineAtPoint(coords)
-    
+
     if (clickedLineIndex !== -1) {
       drawing.selectLine(clickedLineIndex, coords)
+
+      // Show delete zone for PC
+      const container = containerRef.current
+      if (container) {
+        drawing.showDeleteZone(clientY, container.clientHeight)
+      }
     } else {
       longPressTimerRef.current = setTimeout(() => {
         if (!mouseHasMovedRef.current) {
@@ -78,7 +109,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
           drawing.startDrawing(coords, dynamicThickness)
         }
       }, LONG_PRESS_DURATION)
-      
+
       // Only start dragging if we're in move mode
       if (drawing.drawingMode === 'move') {
         zoomPan.startDragging(clientX, clientY)
@@ -88,10 +119,10 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
-    
+
     if (initialMousePos && !mouseHasMovedRef.current) {
       const distance = Math.sqrt(
-        Math.pow(e.clientX - initialMousePos.x, 2) + 
+        Math.pow(e.clientX - initialMousePos.x, 2) +
         Math.pow(e.clientY - initialMousePos.y, 2)
       )
       if (distance > 5) {
@@ -102,13 +133,30 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
         }
       }
     }
-    
+
     if (drawing.isDrawing) {
       const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
       drawing.draw(coords)
     } else if (drawing.selectedLineIndex !== null) {
+      // Enter moveLine mode when dragging starts (PC)
+      if (drawing.drawingMode !== 'moveLine' && mouseHasMovedRef.current) {
+        drawing.setDrawingMode('moveLine')
+      }
+
       const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
       drawing.dragLine(coords)
+
+      // Check proximity to delete zone for PC
+      const container = containerRef.current
+      if (container && drawing.deleteZoneState.visible) {
+        const screenHeight = container.clientHeight
+        const deleteZoneY = drawing.deleteZoneState.position === 'top'
+          ? DELETE_ZONE_HEIGHT / 2
+          : screenHeight - DELETE_ZONE_HEIGHT / 2
+        const distance = Math.abs(e.clientY - deleteZoneY)
+        const isNear = distance < DELETE_ZONE_ACTIVATION_DISTANCE
+        drawing.updateDeleteZoneProximity(isNear)
+      }
     } else if (zoomPan.isDragging && !drawing.isDrawing && drawing.drawingMode === 'move') {
       zoomPan.drag(e.clientX, e.clientY)
     }
@@ -119,17 +167,30 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       clearTimeout(longPressTimerRef.current)
       longPressTimerRef.current = null
     }
-    
-    if (Date.now() - mouseStartTimeRef.current < LONG_PRESS_DURATION && !drawing.isDrawing && !mouseHasMovedRef.current) {
+
+    // Check if we should delete the line (PC)
+    if (drawing.selectedLineIndex !== null &&
+        drawing.deleteZoneState.visible &&
+        drawing.deleteZoneState.isNearby &&
+        mouseHasMovedRef.current) {
+      // Delete the line
+      drawing.deleteLine(drawing.selectedLineIndex)
+    } else if (Date.now() - mouseStartTimeRef.current < LONG_PRESS_DURATION && !drawing.isDrawing && !mouseHasMovedRef.current) {
       const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
       const clickedLineIndex = drawing.findLineAtPoint(coords)
-      
+
       if (clickedLineIndex !== -1) {
         drawing.changeLineThickness(clickedLineIndex)
       }
     }
-    
+
     drawing.stopDrawing()
+    drawing.stopDraggingLine()
+    drawing.hideDeleteZone()
+    // Reset drawing mode to move after line drag (PC)
+    if (drawing.drawingMode === 'moveLine') {
+      drawing.setDrawingMode('move')
+    }
     zoomPan.stopDragging()
     setInitialMousePos(null)
     mouseHasMovedRef.current = false
@@ -137,12 +198,15 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
-    
+
     // Disable interactions during animation
     if (zoomPan.isAnimating) {
       return
     }
-    
+
+    // Reset AI detection flag when user draws manually
+    faceDetection.setIsAiDetectionLine(false)
+
     // Clear any existing modes when starting new touch
     drawing.resetMode()
     
@@ -194,7 +258,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
     }
     
     const onMoveLineMode = () => {
-      // Line move mode - show loupe
+      // Line move mode - show loupe and delete zone
       drawing.setDrawingMode('moveLine')
       drawing.setLoupeState({
         visible: true,
@@ -202,6 +266,12 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
         mode: 'moveLine',
         isStationary: false
       })
+
+      // Show delete zone based on line position
+      const container = containerRef.current
+      if (container) {
+        drawing.showDeleteZone(touchPoint.clientY, container.clientHeight)
+      }
     }
     
     const canvasCoords = zoomPan.getCanvasCoordinates(touchPoint.clientX, touchPoint.clientY)
@@ -277,6 +347,18 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       } else if (touch.currentMode === 'moveLine' && drawing.selectedLineIndex !== null && touch.hasMoved) {
         // Move line in moveLine mode
         drawing.dragLine(coords)
+
+        // Check proximity to delete zone
+        const container = containerRef.current
+        if (container && drawing.deleteZoneState.visible) {
+          const screenHeight = container.clientHeight
+          const deleteZoneY = drawing.deleteZoneState.position === 'top'
+            ? DELETE_ZONE_HEIGHT / 2
+            : screenHeight - DELETE_ZONE_HEIGHT / 2
+          const distance = Math.abs(touchPos.clientY - deleteZoneY)
+          const isNear = distance < DELETE_ZONE_ACTIVATION_DISTANCE
+          drawing.updateDeleteZoneProximity(isNear)
+        }
       } else if (!drawing.isDrawing && touch.currentMode !== 'moveLine') {
         // Only allow dragging in move mode
         if (touch.currentMode === 'move') {
@@ -295,14 +377,28 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
+
+    // Check if we should delete the line
+    if (touch.currentMode === 'moveLine' &&
+        drawing.selectedLineIndex !== null &&
+        drawing.deleteZoneState.visible &&
+        drawing.deleteZoneState.isNearby) {
+      // Delete the line
+      drawing.deleteLine(drawing.selectedLineIndex)
+      // Vibration feedback for deletion
+      if ('vibrate' in navigator) {
+        navigator.vibrate([50, 50, 50])
+      }
+    }
+
     touch.endTouch(e.touches)
-    
+
     if (touch.isQuickTap() && e.changedTouches[0] && !touch.isPinching) {
       const tapX = e.changedTouches[0].clientX
       const tapY = e.changedTouches[0].clientY
       const coords = zoomPan.getCanvasCoordinates(tapX, tapY)
       const clickedLineIndex = drawing.findLineAtPoint(coords)
-      
+
       if (clickedLineIndex !== -1) {
         // If tapped on a line, change thickness (no double tap zoom)
         drawing.changeLineThickness(clickedLineIndex)
@@ -315,7 +411,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
         }
       }
     }
-    
+
     drawing.stopDrawing()
     drawing.stopDraggingLine()
     zoomPan.stopDragging()
@@ -430,14 +526,21 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
             image={imageData.dataURL}
             lines={drawing.lines}
             currentLine={drawing.currentLine}
+            animatingLine={faceDetection.animatingLine}
+            animationProgress={faceDetection.animationProgress}
+            greenLines={faceDetection.greenLines}
+            colorTransitionProgress={faceDetection.colorTransitionProgress}
             scale={zoomPan.scale}
             position={zoomPan.position}
             lineThickness={lineThickness}
             isDrawing={drawing.isDrawing}
             drawingMode={drawing.drawingMode}
             loupeState={drawing.loupeState}
+            deleteZoneState={drawing.deleteZoneState}
             isZoomInitialized={zoomPan.isInitialized}
             isAtInitialScale={!zoomPan.isInitialized || zoomPan.isAtInitialView}
+            showAiTooltipTrigger={showAiTooltip}
+            isAiDetectionLine={faceDetection.isAiDetectionLine}
             getCanvasCoordinates={zoomPan.getCanvasCoordinates}
             onImageLoad={handleImageLoad}
             onMouseDown={handleMouseDown}
@@ -450,12 +553,27 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
             onDownload={download}
             onClose={closeImage}
             onResetView={resetView}
+            onDetectFaces={handleDetectFaces}
+            isDetectingFaces={faceDetection.isDetecting}
           />
         </div>
       )}
       <InstructionTooltip
         visible={showInstructionTooltip}
-        onHide={hideInstruction}
+        onHide={() => {
+          hideInstruction()
+          setShowAiTooltip(true)
+        }}
+      />
+      <ScanningOverlay visible={faceDetection.isScanning} />
+      <NoFaceDialog
+        visible={faceDetection.showNoFace}
+        onHide={faceDetection.hideNoFace}
+      />
+      <ErrorDialog
+        visible={faceDetection.showError}
+        message={faceDetection.errorMessage}
+        onHide={faceDetection.hideError}
       />
     </>
   )

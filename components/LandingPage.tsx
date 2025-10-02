@@ -10,8 +10,11 @@ interface LandingPageProps {
 export default function LandingPage({ onImageSelect, isVisible = true }: LandingPageProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target
+    const file = input.files?.[0]
+    input.value = ''
+
     if (file) {
       const reader = new FileReader()
       reader.onload = (e) => {
@@ -22,7 +25,6 @@ export default function LandingPage({ onImageSelect, isVisible = true }: Landing
       }
       reader.readAsDataURL(file)
     }
-    e.target.value = ''
   }
 
   return (
@@ -57,7 +59,7 @@ export default function LandingPage({ onImageSelect, isVisible = true }: Landing
                 <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
                   <span className="text-gray-600 text-sm">✓</span>
                 </div>
-                <p className="text-gray-700">スタンプやモザイクより自然に隠したい</p>
+                <p className="text-gray-700">人が多いのでAI機能で楽したい</p>
               </div>
             </div>
           </div>

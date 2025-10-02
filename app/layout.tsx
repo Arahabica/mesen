@@ -38,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <head>
-        <link rel="preload" href="/font-subsets/Mamelon-3.5-Hi-Regular-subset-80eeea9a0b878bb973f9c08953e92df1.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/font-subsets/Mamelon-3.5-Hi-Regular-subset-208bb2207d62a5e1f8113f7b31fe0a84.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="stylesheet" href="/Mamelon-3.5-Hi-Regular.css" />
       </head>
       <body>{children}</body>

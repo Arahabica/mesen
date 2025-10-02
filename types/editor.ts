@@ -26,6 +26,12 @@ export interface LoupeState {
   relativePosition?: LoupeRelativePosition
 }
 
+export interface DeleteZoneState {
+  visible: boolean
+  position: 'top' | 'bottom'
+  isNearby: boolean
+}
+
 export interface ImageData {
   dataURL: string
   filename: string

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Line, Position, DrawingMode, LoupeState } from '@/types/editor'
+import { Line, Position, DrawingMode, LoupeState, DeleteZoneState } from '@/types/editor'
 import { getThicknessOptions, CLICK_DISTANCE_THRESHOLD, LINE_HIT_EXPANSION } from '@/constants/editor'
 import { findBestLoupePosition } from '@/utils/loupePosition'
 
@@ -15,6 +15,11 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
     visible: false,
     position: { x: 0, y: 0 },
     mode: 'move'
+  })
+  const [deleteZoneState, setDeleteZoneState] = useState<DeleteZoneState>({
+    visible: false,
+    position: 'bottom',
+    isNearby: false
   })
 
   const distanceToLineSegment = (point: Position, start: Position, end: Position) => {
@@ -204,7 +209,42 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
       position: { x: 0, y: 0 },
       mode: 'move',
     })
+    setDeleteZoneState({
+      visible: false,
+      position: 'bottom',
+      isNearby: false
+    })
   }, [])
+
+  const showDeleteZone = useCallback((lineScreenY: number, screenHeight: number) => {
+    const position = lineScreenY < screenHeight / 2 ? 'bottom' : 'top'
+    setDeleteZoneState({
+      visible: true,
+      position,
+      isNearby: false
+    })
+  }, [])
+
+  const updateDeleteZoneProximity = useCallback((isNear: boolean) => {
+    setDeleteZoneState(prev => ({
+      ...prev,
+      isNearby: isNear
+    }))
+  }, [])
+
+  const hideDeleteZone = useCallback(() => {
+    setDeleteZoneState({
+      visible: false,
+      position: 'bottom',
+      isNearby: false
+    })
+  }, [])
+
+  const deleteLine = useCallback((index: number) => {
+    const newLines = [...lines]
+    newLines.splice(index, 1)
+    setLines(newLines)
+  }, [lines])
 
   return {
     lines,
@@ -214,6 +254,7 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
     selectedLineIndex,
     drawingMode,
     loupeState,
+    deleteZoneState,
     findLineAtPoint,
     isNearLine,
     startDrawing,
@@ -230,6 +271,10 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
     updateLoupePosition,
     resetMode,
     setDrawingMode,
-    setLoupeState
+    setLoupeState,
+    showDeleteZone,
+    updateDeleteZoneProximity,
+    hideDeleteZone,
+    deleteLine
   }
 }
