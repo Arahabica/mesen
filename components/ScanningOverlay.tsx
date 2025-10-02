@@ -22,13 +22,6 @@ export default function ScanningOverlay({ visible }: ScanningOverlayProps) {
         <div className="scan-line-trail" />
       </div>
 
-      {/* Scanning text */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-        <p className="text-green-400 text-lg font-medium tracking-wider animate-pulse">
-          AI SCANNING...
-        </p>
-      </div>
-
       <style jsx>{`
         .grid-overlay {
           background-image:
@@ -46,7 +39,7 @@ export default function ScanningOverlay({ visible }: ScanningOverlayProps) {
               rgba(0, 255, 0, 0.05) 49px,
               rgba(0, 255, 0, 0.05) 50px
             );
-          animation: gridFade 2.5s ease-in-out;
+          animation: gridFade 3.5s ease-in-out;
         }
 
         .scan-line-container {
@@ -71,7 +64,7 @@ export default function ScanningOverlay({ visible }: ScanningOverlayProps) {
             transparent
           );
           box-shadow: 0 0 40px 10px rgba(0, 255, 0, 0.5);
-          animation: scanDown 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+          animation: scanDown 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         }
 
         .scan-line-main {
@@ -90,7 +83,7 @@ export default function ScanningOverlay({ visible }: ScanningOverlayProps) {
           box-shadow:
             0 0 20px 4px rgba(0, 255, 0, 0.8),
             0 0 40px 8px rgba(0, 255, 0, 0.4);
-          animation: scanDown 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+          animation: scanDown 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         }
 
         .scan-line-trail {
@@ -104,14 +97,14 @@ export default function ScanningOverlay({ visible }: ScanningOverlayProps) {
             transparent,
             rgba(0, 255, 0, 0.1)
           );
-          animation: scanDown 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+          animation: scanDown 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         }
 
         @keyframes scanDown {
-          from {
+          0% {
             transform: translateY(0);
           }
-          to {
+          100% {
             transform: translateY(100vh);
           }
         }

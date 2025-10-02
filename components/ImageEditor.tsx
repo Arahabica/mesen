@@ -239,10 +239,8 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       // Remove handler after successful completion
       window.removeEventListener('unhandledrejection', handleUnhandledRejection)
 
-      // Wait for scanning animation to complete before hiding overlay
-      setTimeout(() => {
-        setIsScanning(false)
-      }, 2500)
+      // Stop scanning immediately after detection completes
+      setIsScanning(false)
       setIsDetecting(false)
     } catch (error) {
       console.error('[FaceDetector] Detection failed', error)
