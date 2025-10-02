@@ -16,6 +16,7 @@ interface CanvasEditorProps {
   loupeState: LoupeState
   isZoomInitialized: boolean
   isAtInitialScale: boolean
+  showAiTooltipTrigger: boolean
   getCanvasCoordinates: (screenX: number, screenY: number) => { x: number; y: number }
   onImageLoad: (width: number, height: number) => void
   onMouseDown: (e: React.MouseEvent) => void
@@ -48,6 +49,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   loupeState,
   isZoomInitialized,
   isAtInitialScale,
+  showAiTooltipTrigger,
   getCanvasCoordinates,
   onImageLoad,
   onMouseDown,
@@ -78,6 +80,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   const [showThicknessTooltip, setShowThicknessTooltip] = useState(false)
   const [showUndoTooltip, setShowUndoTooltip] = useState(false)
   const [showDownloadTooltip, setShowDownloadTooltip] = useState(false)
+  const [showAiTooltip, setShowAiTooltip] = useState(false)
   const [shownThicknessTooltip, setShownThicknessTooltip] = useState(false)
   const [lastConfirmedLineCenter, setLastConfirmedLineCenter] = useState<{ x: number; y: number } | null>(null)
 
@@ -238,6 +241,13 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
     setShowDownloadTooltip(true)
   }, []);
 
+  // Show AI tooltip when instruction tooltip is closed
+  useEffect(() => {
+    if (showAiTooltipTrigger && isImageLoaded) {
+      setShowAiTooltip(true)
+    }
+  }, [showAiTooltipTrigger, isImageLoaded]);
+
   return (
     <div className="relative w-screen h-dvh overflow-hidden bg-gray-900">
       <button
@@ -313,18 +323,27 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
       </div>
 
       <div className="absolute bottom-4 right-4 z-10">
-        <button
-          onClick={onDetectFaces}
-          disabled={isDetectingFaces || !isImageLoaded}
-          className={`w-9 h-9 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all text-base gothic-font ${
-            isDetectingFaces || !isImageLoaded
-              ? 'opacity-40 cursor-not-allowed'
-              : 'hover:bg-gray-600'
-          } ${isDetectingFaces ? 'animate-pulse' : ''}`}
-          aria-label="AIで顔を検出"
-        >
-          AI
-        </button>
+        <div className="relative">
+          <button
+            onClick={onDetectFaces}
+            disabled={isDetectingFaces || !isImageLoaded}
+            className={`w-9 h-9 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all text-base gothic-font ${
+              isDetectingFaces || !isImageLoaded
+                ? 'opacity-40 cursor-not-allowed'
+                : 'hover:bg-gray-600'
+            } ${isDetectingFaces ? 'animate-pulse' : ''}`}
+            aria-label="AIで顔を検出"
+          >
+            AI
+          </button>
+          <TemporalTooltip
+            text="AIで自動検出"
+            show={showAiTooltip}
+            duration={2000}
+            onClose={() => setShowAiTooltip(false)}
+            className="bottom-full right-0 mb-2"
+          />
+        </div>
       </div>
 
       <div

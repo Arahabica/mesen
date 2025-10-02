@@ -38,6 +38,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const zoomPan = useZoomPan(imageSize, containerRef)
   const touch = useTouch()
   const { showInstructionTooltip, showInstruction, hideInstruction } = useInstructionTooltip()
+  const [showAiTooltip, setShowAiTooltip] = useState(false)
 
   useEffect(() => {
     faceDetectorRef.current = new FaceDetectorLazy({
@@ -598,6 +599,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
             loupeState={drawing.loupeState}
             isZoomInitialized={zoomPan.isInitialized}
             isAtInitialScale={!zoomPan.isInitialized || zoomPan.isAtInitialView}
+            showAiTooltipTrigger={showAiTooltip}
             getCanvasCoordinates={zoomPan.getCanvasCoordinates}
             onImageLoad={handleImageLoad}
             onMouseDown={handleMouseDown}
@@ -617,7 +619,10 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       )}
       <InstructionTooltip
         visible={showInstructionTooltip}
-        onHide={hideInstruction}
+        onHide={() => {
+          hideInstruction()
+          setShowAiTooltip(true)
+        }}
       />
     </>
   )
