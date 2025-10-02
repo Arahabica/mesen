@@ -85,7 +85,10 @@ export function useFaceDetection(options: UseFaceDetectionOptions): UseFaceDetec
   }, [])
 
   const animateLines = useCallback(async (uniqueLines: Line[]) => {
-    const animationDuration = 180 // AI検出の目線を引くアニメーション時間 0.18 seconds
+    // AI検出の目線を引くアニメーション時間
+    // 9個以上の顔の場合: 合計2秒になるように調整
+    const totalAnimationTime = uniqueLines.length >= 9 ? 1600 : 180 * uniqueLines.length
+    const animationDuration = totalAnimationTime / uniqueLines.length
     const frameRate = 60 // 60fps
     const frameInterval = 1000 / frameRate
     const tempGreenLines: Line[] = []
