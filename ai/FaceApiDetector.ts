@@ -3,7 +3,7 @@ import * as faceapi from 'face-api.js'
 
 type DetectionWithLandmarks = faceapi.WithFaceLandmarks<faceapi.WithFaceDetection<{}>>
 
-type FaceApiDetectorOptions = FaceDetectorOptions & {
+export type FaceApiDetectorOptions = FaceDetectorOptions & {
   minFaceAreaRatio?: number
   mergeIoUThreshold?: number
 }

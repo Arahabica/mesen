@@ -10,7 +10,7 @@ import { useInstructionTooltip } from '@/hooks/useInstructionTooltip'
 import { ImageSize, ImageData, Line } from '@/types/editor'
 import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, getThicknessOptions, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS } from '@/constants/editor'
 import type { Face } from '@/ai/types'
-import { FaceApiDetector } from '@/ai/FaceApiDetector'
+import { FaceDetectorLazy } from '@/ai/FaceDetectorLazy'
 
 interface ImageEditorProps {
   initialImage: ImageData
@@ -31,7 +31,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const mouseHasMovedRef = useRef<boolean>(false)
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
   const initialTouchRef = useRef<{ x: number; y: number } | null>(null)
-  const faceDetectorRef = useRef<FaceApiDetector | null>(null)
+  const faceDetectorRef = useRef<FaceDetectorLazy | null>(null)
   
   const drawing = useDrawing(lineThickness, imageSize.width, imageSize.height)
   const setDrawingLines = drawing.setLines
@@ -40,7 +40,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const { showInstructionTooltip, showInstruction, hideInstruction } = useInstructionTooltip()
 
   useEffect(() => {
-    faceDetectorRef.current = new FaceApiDetector({
+    faceDetectorRef.current = new FaceDetectorLazy({
       maxFaces: 12,
       minDetectionConfidence: 0.45,
       minFaceAreaRatio: 0.00008,
