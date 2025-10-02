@@ -59,7 +59,7 @@ export default function LandingPage({ onImageSelect, isVisible = true }: Landing
                 <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
                   <span className="text-gray-600 text-sm">✓</span>
                 </div>
-                <p className="text-gray-700">スタンプやモザイクより自然に隠したい</p>
+                <p className="text-gray-700">人が多いのでAI機能で楽したい</p>
               </div>
             </div>
           </div>
