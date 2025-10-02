@@ -49,7 +49,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
 
   useEffect(() => {
     faceDetectorRef.current = new FaceDetectorLazy({
-      maxFaces: 12,
+      maxFaces: 50,
       minDetectionConfidence: 0.35,
       minFaceAreaRatio: 0.00003,
       mergeIoUThreshold: 0.4,
