@@ -35,7 +35,8 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const [animatingLine, setAnimatingLine] = useState<Line | null>(null)
   const [animationProgress, setAnimationProgress] = useState(0)
   const [greenLines, setGreenLines] = useState<Line[]>([])
-  
+  const [colorTransitionProgress, setColorTransitionProgress] = useState(0)
+
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasEditorRef = useRef<CanvasEditorRef>(null)
   const mouseStartTimeRef = useRef<number>(0)
@@ -261,7 +262,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
 
       // Animate lines one by one
       const animateLines = async () => {
-        const animationDuration = 150 // AI検出の目線を引くアニメーション時間 0.15 seconds
+        const animationDuration = 180 // AI検出の目線を引くアニメーション時間 0.18 seconds
         const frameRate = 60 // 60fps
         const frameInterval = 1000 / frameRate
         const tempGreenLines: Line[] = []
@@ -298,12 +299,25 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
           await new Promise(resolve => setTimeout(resolve, 50))
         }
 
-        // Wait 1 second after all lines are drawn
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // Animate color transition from green to black over 700ms
+        const colorTransitionDuration = 700
+        const startTime = Date.now()
+
+        while (true) {
+          const elapsed = Date.now() - startTime
+          const progress = Math.min(elapsed / colorTransitionDuration, 1)
+
+          setColorTransitionProgress(progress)
+
+          if (progress >= 1) break
+
+          await new Promise(resolve => setTimeout(resolve, frameInterval))
+        }
 
         // Convert all green lines to black
         setDrawingLines(prev => [...prev, ...tempGreenLines])
         setGreenLines([])
+        setColorTransitionProgress(0)
       }
 
       animateLines()
@@ -698,6 +712,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
             animatingLine={animatingLine}
             animationProgress={animationProgress}
             greenLines={greenLines}
+            colorTransitionProgress={colorTransitionProgress}
             scale={zoomPan.scale}
             position={zoomPan.position}
             lineThickness={lineThickness}

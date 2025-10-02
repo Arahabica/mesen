@@ -11,6 +11,7 @@ interface CanvasEditorProps {
   animatingLine: Line | null
   animationProgress: number
   greenLines: Line[]
+  colorTransitionProgress: number
   scale: number
   position: { x: number; y: number }
   lineThickness: number
@@ -48,6 +49,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   animatingLine,
   animationProgress,
   greenLines,
+  colorTransitionProgress,
   scale,
   position,
   lineThickness,
@@ -188,9 +190,22 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
     })
 
     // Draw green lines (completed animation but not yet converted to black)
-    ctx.strokeStyle = '#00ff00'
-    ctx.shadowBlur = 10
-    ctx.shadowColor = '#00ff00'
+    // Interpolate color from green to black based on colorTransitionProgress
+    if (colorTransitionProgress > 0) {
+      // Interpolate RGB from green (0, 255, 0) to black (0, 0, 0)
+      const greenValue = Math.round(255 * (1 - colorTransitionProgress))
+      ctx.strokeStyle = `rgb(0, ${greenValue}, 0)`
+
+      // Reduce shadow as color transitions to black
+      const shadowIntensity = 10 * (1 - colorTransitionProgress)
+      ctx.shadowBlur = shadowIntensity
+      ctx.shadowColor = `rgb(0, ${greenValue}, 0)`
+    } else {
+      ctx.strokeStyle = '#00ff00'
+      ctx.shadowBlur = 10
+      ctx.shadowColor = '#00ff00'
+    }
+
     greenLines.forEach(line => {
       ctx.lineWidth = line.thickness
       ctx.beginPath()
@@ -238,7 +253,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
       ctx.lineTo(currentLine.end.x, currentLine.end.y)
       ctx.stroke()
     }
-  }, [currentLine, animatingLine, animationProgress, greenLines, lines, isImageLoaded])
+  }, [currentLine, animatingLine, animationProgress, greenLines, colorTransitionProgress, lines, isImageLoaded])
 
   // Vibration feedback for mode transitions
   useEffect(() => {
