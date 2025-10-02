@@ -251,20 +251,6 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 z-10">
         <div className="relative">
           <button
-            onClick={onDetectFaces}
-            disabled={isDetectingFaces || !isImageLoaded}
-            className={`w-12 h-12 rounded-full flex items-center justify-center bg-indigo-600 text-white transition-all ${
-              isDetectingFaces || !isImageLoaded
-                ? 'opacity-40 cursor-not-allowed'
-                : 'hover:bg-indigo-500'
-            } ${isDetectingFaces ? 'animate-pulse' : ''}`}
-            aria-label="AIで顔を検出"
-          >
-            <Sparkles size={24} />
-          </button>
-        </div>
-        <div className="relative">
-          <button
             onClick={onUndo}
             disabled={lines.length === 0}
             className={`w-12 h-12 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all ${
@@ -325,7 +311,22 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           />
         </div>
       </div>
-      
+
+      <div className="absolute bottom-4 right-4 z-10">
+        <button
+          onClick={onDetectFaces}
+          disabled={isDetectingFaces || !isImageLoaded}
+          className={`w-12 h-12 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all ${
+            isDetectingFaces || !isImageLoaded
+              ? 'opacity-40 cursor-not-allowed'
+              : 'hover:bg-gray-600'
+          } ${isDetectingFaces ? 'animate-pulse' : ''}`}
+          aria-label="AIで顔を検出"
+        >
+          <Sparkles size={24} />
+        </button>
+      </div>
+
       <div
         ref={containerRef}
         className="w-full h-dvh"
