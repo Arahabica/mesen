@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import CanvasEditor, { CanvasEditorRef } from './CanvasEditor'
 import InstructionTooltip from './InstructionTooltip'
 import ErrorDialog from './ErrorDialog'
@@ -10,10 +10,9 @@ import { useDrawing } from '@/hooks/useDrawing'
 import { useZoomPan } from '@/hooks/useZoomPan'
 import { useTouch } from '@/hooks/useTouch'
 import { useInstructionTooltip } from '@/hooks/useInstructionTooltip'
-import { ImageSize, ImageData, Line } from '@/types/editor'
+import { useFaceDetection } from '@/hooks/useFaceDetection'
+import { ImageSize, ImageData } from '@/types/editor'
 import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, getThicknessOptions, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS } from '@/constants/editor'
-import type { Face } from '@/ai/types'
-import { FaceDetectorLazy } from '@/ai/FaceDetectorLazy'
 
 interface ImageEditorProps {
   initialImage: ImageData
@@ -26,16 +25,6 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const [imageSize, setImageSize] = useState<ImageSize>({ width: 0, height: 0 })
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
   const [canvasOpacity, setCanvasOpacity] = useState(1)
-  const [isDetecting, setIsDetecting] = useState(false)
-  const [isScanning, setIsScanning] = useState(false)
-  const [showError, setShowError] = useState(false)
-  const [errorMessage, setErrorMessage] = useState('')
-  const [showNoFace, setShowNoFace] = useState(false)
-  const [isAiDetectionLine, setIsAiDetectionLine] = useState(false)
-  const [animatingLine, setAnimatingLine] = useState<Line | null>(null)
-  const [animationProgress, setAnimationProgress] = useState(0)
-  const [greenLines, setGreenLines] = useState<Line[]>([])
-  const [colorTransitionProgress, setColorTransitionProgress] = useState(0)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasEditorRef = useRef<CanvasEditorRef>(null)
@@ -43,8 +32,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const mouseHasMovedRef = useRef<boolean>(false)
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
   const initialTouchRef = useRef<{ x: number; y: number } | null>(null)
-  const faceDetectorRef = useRef<FaceDetectorLazy | null>(null)
-  
+
   const drawing = useDrawing(lineThickness, imageSize.width, imageSize.height)
   const setDrawingLines = drawing.setLines
   const zoomPan = useZoomPan(imageSize, containerRef)
@@ -52,27 +40,12 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const { showInstructionTooltip, showInstruction, hideInstruction } = useInstructionTooltip()
   const [showAiTooltip, setShowAiTooltip] = useState(false)
 
-  useEffect(() => {
-    faceDetectorRef.current = new FaceDetectorLazy({
-      maxFaces: 50,
-      minDetectionConfidence: 0.35,
-      minFaceAreaRatio: 0.00003,
-      mergeIoUThreshold: 0.4,
-      additionalScales: [1.5, 2],
-      maxUpscaleFactor: 2.4,
-      upscaleTargetDimension: 1800,
-      modelBasePath: '/face-api',
-      debug: true
-    })
-
-    return () => {
-      faceDetectorRef.current?.dispose().catch((error) => {
-        console.warn('Failed to dispose FaceDetector', error)
-      })
-      faceDetectorRef.current = null
-    }
-  }, [])
-
+  const faceDetection = useFaceDetection({
+    imageSize,
+    thicknessOptions: getThicknessOptions(imageSize.width, imageSize.height).filter(option => option > 0),
+    existingLines: drawing.lines,
+    onLinesAdd: (lines) => setDrawingLines(prev => [...prev, ...lines])
+  })
 
   // Calculate dynamic thickness based on current viewport and zoom
   const calculateDynamicThickness = useCallback(() => {
@@ -97,239 +70,15 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
     showInstruction()
   }, [showInstruction])
 
-  const logFaces = useCallback((faces: Face[], filename: string) => {
-    const prefix = '[FaceDetector]'
-
-    if (faces.length === 0) {
-      console.log(`${prefix} ${filename}: no faces detected`)
-      return
-    }
-
-    console.log(`${prefix} ${filename}: detected ${faces.length} face(s)`)
-
-    faces.forEach((face, index) => {
-      console.log(
-        `${prefix} Face ${index + 1} bounds -> x: ${face.x}, y: ${face.y}, width: ${face.width}, height: ${face.height}`
-      )
-
-      face.eyes.forEach((eye, eyeIndex) => {
-        const label = eyeIndex === 0 ? 'leftEye' : 'rightEye'
-        console.log(`${prefix} Face ${index + 1} ${label} -> x: ${eye.x}, y: ${eye.y}`)
-      })
-    })
-  }, [])
-
   const handleDetectFaces = useCallback(async () => {
     if (!imageData) {
       console.warn('[FaceDetector] No image loaded')
       return
     }
 
-    // Setup unhandled rejection handler for this detection session
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error('[FaceDetector] Unhandled rejection:', event.reason)
-      setErrorMessage('AI検出でエラーが発生しました')
-      setShowError(true)
-      setIsScanning(false)
-      setIsDetecting(false)
-      event.preventDefault()
-    }
-
-    window.addEventListener('unhandledrejection', handleUnhandledRejection)
-
-    try {
-      setIsScanning(true)
-      setIsDetecting(true)
-
-      const detector = faceDetectorRef.current
-      if (!detector) {
-        console.warn('[FaceDetector] Detector not initialized')
-        setErrorMessage('AI検出の初期化に失敗しました')
-        setShowError(true)
-        setIsScanning(false)
-        window.removeEventListener('unhandledrejection', handleUnhandledRejection)
-        return
-      }
-      const response = await fetch(imageData.dataURL)
-      const blob = await response.blob()
-      const faces = await detector.detect(blob)
-      logFaces(faces, imageData.filename)
-
-      if (faces.length === 0) {
-        setShowNoFace(true)
-        setIsScanning(false)
-        setIsDetecting(false)
-        window.removeEventListener('unhandledrejection', handleUnhandledRejection)
-        return
-      }
-
-      if (imageSize.width === 0 || imageSize.height === 0) {
-        console.warn('[FaceDetector] Image size unavailable; skipping auto eye lines')
-        return
-      }
-
-      const thicknessOptions = getThicknessOptions(imageSize.width, imageSize.height).filter(option => option > 0)
-      if (thicknessOptions.length === 0) {
-        console.warn('[FaceDetector] No valid thickness options; skipping auto eye lines')
-        return
-      }
-
-      const createLineForFace = (face: Face): Line | null => {
-        if (!face.landmarks || face.landmarks.length < 48) {
-          return null
-        }
-
-        const leftCorner = face.landmarks[36]
-        const rightCorner = face.landmarks[45]
-
-        if (!leftCorner || !rightCorner) {
-          return null
-        }
-
-        const dx = rightCorner.x - leftCorner.x
-        const dy = rightCorner.y - leftCorner.y
-        const length = Math.hypot(dx, dy)
-
-        if (!Number.isFinite(length) || length < 2) {
-          return null
-        }
-
-        const extension = length * 0.2
-        const angle = Math.atan2(dy, dx)
-
-        const startX = leftCorner.x - extension * Math.cos(angle)
-        const startY = leftCorner.y - extension * Math.sin(angle)
-        const endX = rightCorner.x + extension * Math.cos(angle)
-        const endY = rightCorner.y + extension * Math.sin(angle)
-
-        const lineA = dy
-        const lineB = leftCorner.x - rightCorner.x
-        const lineC = rightCorner.x * leftCorner.y - leftCorner.x * rightCorner.y
-        const denom = Math.hypot(lineA, lineB) || 1
-
-        const eyeContourIndices = [37, 38, 39, 40, 41, 42, 43, 44, 46, 47]
-        let maxDistance = 0
-
-        eyeContourIndices.forEach(index => {
-          const point = face.landmarks?.[index]
-          if (!point) return
-          const distance = Math.abs(lineA * point.x + lineB * point.y + lineC) / denom
-          if (distance > maxDistance) {
-            maxDistance = distance
-          }
-        })
-
-        const baseThickness = Math.max(maxDistance * 4, 2)
-        const selectedThickness = thicknessOptions.find(option => option >= baseThickness) ?? thicknessOptions[thicknessOptions.length - 1]
-
-        return {
-          start: { x: Math.round(startX), y: Math.round(startY) },
-          end: { x: Math.round(endX), y: Math.round(endY) },
-          thickness: selectedThickness
-        }
-      }
-
-      const eyeLines = faces
-        .map(createLineForFace)
-        .filter((line): line is Line => line !== null)
-
-      if (eyeLines.length === 0) {
-        return
-      }
-
-      // Mark as AI detection line for tooltip display
-      setIsAiDetectionLine(true)
-
-      // Filter out duplicate lines
-      const keyOf = (line: Line) => `${line.start.x}:${line.start.y}:${line.end.x}:${line.end.y}:${line.thickness}`
-      const existingKeys = new Set(drawing.lines.map(keyOf))
-      const uniqueLines = eyeLines.filter(line => !existingKeys.has(keyOf(line)))
-
-      if (uniqueLines.length === 0) {
-        // Remove handler after completion
-        window.removeEventListener('unhandledrejection', handleUnhandledRejection)
-        setIsScanning(false)
-        setIsDetecting(false)
-        return
-      }
-
-      // Remove handler after successful completion
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
-
-      // Stop scanning immediately after detection completes
-      setIsScanning(false)
-      setIsDetecting(false)
-
-      // Animate lines one by one
-      const animateLines = async () => {
-        const animationDuration = 180 // AI検出の目線を引くアニメーション時間 0.18 seconds
-        const frameRate = 60 // 60fps
-        const frameInterval = 1000 / frameRate
-        const tempGreenLines: Line[] = []
-
-        for (let i = 0; i < uniqueLines.length; i++) {
-          const line = uniqueLines[i]
-
-          // Show green animating line
-          setAnimatingLine(line)
-
-          // Animate from 0 to 1 over animationDuration
-          const startTime = Date.now()
-
-          while (true) {
-            const elapsed = Date.now() - startTime
-            const progress = Math.min(elapsed / animationDuration, 1)
-
-            setAnimationProgress(progress)
-
-            if (progress >= 1) break
-
-            await new Promise(resolve => setTimeout(resolve, frameInterval))
-          }
-
-          // Clear animating line first
-          setAnimatingLine(null)
-          setAnimationProgress(0)
-
-          // Add to green lines (temporary)
-          tempGreenLines.push(line)
-          setGreenLines([...tempGreenLines])
-
-          // Small delay before next line
-          await new Promise(resolve => setTimeout(resolve, 50))
-        }
-
-        // Animate color transition from green to black over 700ms
-        const colorTransitionDuration = 700
-        const startTime = Date.now()
-
-        while (true) {
-          const elapsed = Date.now() - startTime
-          const progress = Math.min(elapsed / colorTransitionDuration, 1)
-
-          setColorTransitionProgress(progress)
-
-          if (progress >= 1) break
-
-          await new Promise(resolve => setTimeout(resolve, frameInterval))
-        }
-
-        // Convert all green lines to black
-        setDrawingLines(prev => [...prev, ...tempGreenLines])
-        setGreenLines([])
-        setColorTransitionProgress(0)
-      }
-
-      animateLines()
-    } catch (error) {
-      console.error('[FaceDetector] Detection failed', error)
-      setErrorMessage('AI検出でエラーが発生しました')
-      setShowError(true)
-      setIsScanning(false)
-      setIsDetecting(false)
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
-    }
-  }, [imageData, logFaces, imageSize.height, imageSize.width, setDrawingLines])
+    faceDetection.setIsAiDetectionLine(true)
+    await faceDetection.detectFaces(imageData.dataURL, imageData.filename)
+  }, [imageData, faceDetection])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const { clientX, clientY } = e
@@ -338,7 +87,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
     mouseHasMovedRef.current = false
 
     // Reset AI detection flag when user draws manually
-    setIsAiDetectionLine(false)
+    faceDetection.setIsAiDetectionLine(false)
 
     const coords = zoomPan.getCanvasCoordinates(clientX, clientY)
     const clickedLineIndex = drawing.findLineAtPoint(coords)
@@ -420,7 +169,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
     }
 
     // Reset AI detection flag when user draws manually
-    setIsAiDetectionLine(false)
+    faceDetection.setIsAiDetectionLine(false)
 
     // Clear any existing modes when starting new touch
     drawing.resetMode()
@@ -709,10 +458,10 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
             image={imageData.dataURL}
             lines={drawing.lines}
             currentLine={drawing.currentLine}
-            animatingLine={animatingLine}
-            animationProgress={animationProgress}
-            greenLines={greenLines}
-            colorTransitionProgress={colorTransitionProgress}
+            animatingLine={faceDetection.animatingLine}
+            animationProgress={faceDetection.animationProgress}
+            greenLines={faceDetection.greenLines}
+            colorTransitionProgress={faceDetection.colorTransitionProgress}
             scale={zoomPan.scale}
             position={zoomPan.position}
             lineThickness={lineThickness}
@@ -722,7 +471,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
             isZoomInitialized={zoomPan.isInitialized}
             isAtInitialScale={!zoomPan.isInitialized || zoomPan.isAtInitialView}
             showAiTooltipTrigger={showAiTooltip}
-            isAiDetectionLine={isAiDetectionLine}
+            isAiDetectionLine={faceDetection.isAiDetectionLine}
             getCanvasCoordinates={zoomPan.getCanvasCoordinates}
             onImageLoad={handleImageLoad}
             onMouseDown={handleMouseDown}
@@ -736,7 +485,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
             onClose={closeImage}
             onResetView={resetView}
             onDetectFaces={handleDetectFaces}
-            isDetectingFaces={isDetecting}
+            isDetectingFaces={faceDetection.isDetecting}
           />
         </div>
       )}
@@ -747,15 +496,15 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
           setShowAiTooltip(true)
         }}
       />
-      <ScanningOverlay visible={isScanning} />
+      <ScanningOverlay visible={faceDetection.isScanning} />
       <NoFaceDialog
-        visible={showNoFace}
-        onHide={() => setShowNoFace(false)}
+        visible={faceDetection.showNoFace}
+        onHide={faceDetection.hideNoFace}
       />
       <ErrorDialog
-        visible={showError}
-        message={errorMessage}
-        onHide={() => setShowError(false)}
+        visible={faceDetection.showError}
+        message={faceDetection.errorMessage}
+        onHide={faceDetection.hideError}
       />
     </>
   )
