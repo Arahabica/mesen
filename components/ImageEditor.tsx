@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import CanvasEditor, { CanvasEditorRef } from './CanvasEditor'
 import InstructionTooltip from './InstructionTooltip'
+import ErrorDialog from './ErrorDialog'
 import { useDrawing } from '@/hooks/useDrawing'
 import { useZoomPan } from '@/hooks/useZoomPan'
 import { useTouch } from '@/hooks/useTouch'
@@ -24,6 +25,8 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
   const [canvasOpacity, setCanvasOpacity] = useState(1)
   const [isDetecting, setIsDetecting] = useState(false)
+  const [showError, setShowError] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
   
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasEditorRef = useRef<CanvasEditorRef>(null)
@@ -118,6 +121,8 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       const detector = faceDetectorRef.current
       if (!detector) {
         console.warn('[FaceDetector] Detector not initialized')
+        setErrorMessage('AI検出の初期化に失敗しました')
+        setShowError(true)
         return
       }
       const response = await fetch(imageData.dataURL)
@@ -214,6 +219,8 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       })
     } catch (error) {
       console.error('[FaceDetector] Detection failed', error)
+      setErrorMessage('AI検出でエラーが発生しました')
+      setShowError(true)
     } finally {
       setIsDetecting(false)
     }
@@ -623,6 +630,11 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
           hideInstruction()
           setShowAiTooltip(true)
         }}
+      />
+      <ErrorDialog
+        visible={showError}
+        message={errorMessage}
+        onHide={() => setShowError(false)}
       />
     </>
   )
