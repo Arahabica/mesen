@@ -1,8 +1,9 @@
 import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle, useCallback } from 'react'
 import { X, RotateCcw, Download, Expand } from 'lucide-react'
-import { Line, LoupeState, DrawingMode } from '@/types/editor'
+import { Line, LoupeState, DrawingMode, DeleteZoneState } from '@/types/editor'
 import Loupe from './Loupe'
 import TemporalTooltip from './TemporalTooltip'
+import DeleteZone from './DeleteZone'
 
 interface CanvasEditorProps {
   image: string
@@ -18,6 +19,7 @@ interface CanvasEditorProps {
   isDrawing: boolean
   drawingMode: DrawingMode
   loupeState: LoupeState
+  deleteZoneState: DeleteZoneState
   isZoomInitialized: boolean
   isAtInitialScale: boolean
   showAiTooltipTrigger: boolean
@@ -56,6 +58,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   isDrawing,
   drawingMode,
   loupeState,
+  deleteZoneState,
   isZoomInitialized,
   isAtInitialScale,
   showAiTooltipTrigger,
@@ -321,15 +324,18 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
 
   return (
     <div className="relative w-screen h-dvh overflow-hidden bg-gray-900">
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 w-12 h-12 bg-gray-700 text-gray-300 rounded-full flex items-center justify-center hover:bg-gray-600 transition-colors z-10"
-        aria-label="閉じる"
-      >
-        <X size={24} />
-      </button>
-      
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 z-10">
+      {drawingMode !== 'moveLine' && (
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 w-12 h-12 bg-gray-700 text-gray-300 rounded-full flex items-center justify-center hover:bg-gray-600 transition-colors z-10"
+          aria-label="閉じる"
+        >
+          <X size={24} />
+        </button>
+      )}
+
+      {drawingMode !== 'moveLine' && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 z-10">
         <div className="relative">
           <button
             onClick={onUndo}
@@ -391,31 +397,34 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
             className="bottom-full left-1/2 -translate-x-1/2 mb-2"
           />
         </div>
-      </div>
-
-      <div className="absolute bottom-4 right-4 z-10">
-        <div className="relative">
-          <button
-            onClick={onDetectFaces}
-            disabled={isDetectingFaces || !isImageLoaded}
-            className={`w-9 h-9 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all text-base gothic-font ${
-              isDetectingFaces || !isImageLoaded
-                ? 'opacity-40 cursor-not-allowed'
-                : 'hover:bg-gray-600'
-            } ${isDetectingFaces ? 'animate-pulse' : ''}`}
-            aria-label="AIで顔を検出"
-          >
-            AI
-          </button>
-          <TemporalTooltip
-            text="AIで自動検出"
-            show={showAiTooltip}
-            duration={2000}
-            onClose={() => setShowAiTooltip(false)}
-            className="bottom-full right-0 mb-2"
-          />
         </div>
-      </div>
+      )}
+
+      {drawingMode !== 'moveLine' && (
+        <div className="absolute bottom-4 right-4 z-10">
+          <div className="relative">
+            <button
+              onClick={onDetectFaces}
+              disabled={isDetectingFaces || !isImageLoaded}
+              className={`w-9 h-9 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all text-base gothic-font ${
+                isDetectingFaces || !isImageLoaded
+                  ? 'opacity-40 cursor-not-allowed'
+                  : 'hover:bg-gray-600'
+              } ${isDetectingFaces ? 'animate-pulse' : ''}`}
+              aria-label="AIで顔を検出"
+            >
+              AI
+            </button>
+            <TemporalTooltip
+              text="AIで自動検出"
+              show={showAiTooltip}
+              duration={2000}
+              onClose={() => setShowAiTooltip(false)}
+              className="bottom-full right-0 mb-2"
+            />
+          </div>
+        </div>
+      )}
 
       <div
         ref={containerRef}
@@ -489,6 +498,11 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           )
         )}
       </div>
+      <DeleteZone
+        visible={deleteZoneState.visible}
+        position={deleteZoneState.position}
+        isNearby={deleteZoneState.isNearby}
+      />
     </div>
   )
 })

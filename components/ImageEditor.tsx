@@ -12,7 +12,7 @@ import { useTouch } from '@/hooks/useTouch'
 import { useInstructionTooltip } from '@/hooks/useInstructionTooltip'
 import { useFaceDetection } from '@/hooks/useFaceDetection'
 import { ImageSize, ImageData } from '@/types/editor'
-import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, getThicknessOptions, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS } from '@/constants/editor'
+import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, getThicknessOptions, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS, DELETE_ZONE_HEIGHT, DELETE_ZONE_ACTIVATION_DISTANCE } from '@/constants/editor'
 
 interface ImageEditorProps {
   initialImage: ImageData
@@ -144,17 +144,18 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       clearTimeout(longPressTimerRef.current)
       longPressTimerRef.current = null
     }
-    
+
     if (Date.now() - mouseStartTimeRef.current < LONG_PRESS_DURATION && !drawing.isDrawing && !mouseHasMovedRef.current) {
       const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
       const clickedLineIndex = drawing.findLineAtPoint(coords)
-      
+
       if (clickedLineIndex !== -1) {
         drawing.changeLineThickness(clickedLineIndex)
       }
     }
-    
+
     drawing.stopDrawing()
+    drawing.stopDraggingLine()
     zoomPan.stopDragging()
     setInitialMousePos(null)
     mouseHasMovedRef.current = false
@@ -222,7 +223,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
     }
     
     const onMoveLineMode = () => {
-      // Line move mode - show loupe
+      // Line move mode - show loupe and delete zone
       drawing.setDrawingMode('moveLine')
       drawing.setLoupeState({
         visible: true,
@@ -230,6 +231,12 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
         mode: 'moveLine',
         isStationary: false
       })
+
+      // Show delete zone based on line position
+      const container = containerRef.current
+      if (container) {
+        drawing.showDeleteZone(touchPoint.clientY, container.clientHeight)
+      }
     }
     
     const canvasCoords = zoomPan.getCanvasCoordinates(touchPoint.clientX, touchPoint.clientY)
@@ -305,6 +312,18 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       } else if (touch.currentMode === 'moveLine' && drawing.selectedLineIndex !== null && touch.hasMoved) {
         // Move line in moveLine mode
         drawing.dragLine(coords)
+
+        // Check proximity to delete zone
+        const container = containerRef.current
+        if (container && drawing.deleteZoneState.visible) {
+          const screenHeight = container.clientHeight
+          const deleteZoneY = drawing.deleteZoneState.position === 'top'
+            ? DELETE_ZONE_HEIGHT / 2
+            : screenHeight - DELETE_ZONE_HEIGHT / 2
+          const distance = Math.abs(touchPos.clientY - deleteZoneY)
+          const isNear = distance < DELETE_ZONE_ACTIVATION_DISTANCE
+          drawing.updateDeleteZoneProximity(isNear)
+        }
       } else if (!drawing.isDrawing && touch.currentMode !== 'moveLine') {
         // Only allow dragging in move mode
         if (touch.currentMode === 'move') {
@@ -323,14 +342,28 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
+
+    // Check if we should delete the line
+    if (touch.currentMode === 'moveLine' &&
+        drawing.selectedLineIndex !== null &&
+        drawing.deleteZoneState.visible &&
+        drawing.deleteZoneState.isNearby) {
+      // Delete the line
+      drawing.deleteLine(drawing.selectedLineIndex)
+      // Vibration feedback for deletion
+      if ('vibrate' in navigator) {
+        navigator.vibrate([50, 50, 50])
+      }
+    }
+
     touch.endTouch(e.touches)
-    
+
     if (touch.isQuickTap() && e.changedTouches[0] && !touch.isPinching) {
       const tapX = e.changedTouches[0].clientX
       const tapY = e.changedTouches[0].clientY
       const coords = zoomPan.getCanvasCoordinates(tapX, tapY)
       const clickedLineIndex = drawing.findLineAtPoint(coords)
-      
+
       if (clickedLineIndex !== -1) {
         // If tapped on a line, change thickness (no double tap zoom)
         drawing.changeLineThickness(clickedLineIndex)
@@ -343,7 +376,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
         }
       }
     }
-    
+
     drawing.stopDrawing()
     drawing.stopDraggingLine()
     zoomPan.stopDragging()
@@ -468,6 +501,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
             isDrawing={drawing.isDrawing}
             drawingMode={drawing.drawingMode}
             loupeState={drawing.loupeState}
+            deleteZoneState={drawing.deleteZoneState}
             isZoomInitialized={zoomPan.isInitialized}
             isAtInitialScale={!zoomPan.isInitialized || zoomPan.isAtInitialView}
             showAiTooltipTrigger={showAiTooltip}

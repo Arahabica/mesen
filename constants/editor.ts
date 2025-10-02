@@ -50,3 +50,7 @@ export const ZOOM_ANIMATION_DURATION = 200  // ズームアニメーション時
 // 線の判定範囲設定
 export const LINE_HIT_EXPANSION = 25        // 線のタップ判定拡張範囲（px）
 export const LINE_ZOOM_EXCLUSION_RADIUS = 100  // 線の周囲でズームを無効化する範囲（px）
+
+// 削除エリア設定
+export const DELETE_ZONE_HEIGHT = 80        // 削除エリアの高さ（px）
+export const DELETE_ZONE_ACTIVATION_DISTANCE = 100  // 削除エリアに近いと判定する距離（px）
