@@ -22,8 +22,13 @@ const nextConfig = {
 
     return config;
   },
-  // 静的ファイルのコピー設定
+  // COOP/COEP headers for SharedArrayBuffer support (required for TensorFlow.js in production)
+  // Development environment doesn't need these headers
   async headers() {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Skipping COOP/COEP headers in development mode');
+      return []
+    }
     return [
       {
         source: '/:path*',

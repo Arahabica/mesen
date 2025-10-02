@@ -1,5 +1,7 @@
 import type { Face, FaceDetector as FaceDetectorContract, FaceDetectorOptions, Eye } from './types'
 import * as faceapi from 'face-api.js'
+import '@tensorflow/tfjs-backend-webgl'
+import '@tensorflow/tfjs-backend-cpu'
 
 type DetectionWithLandmarks = faceapi.WithFaceLandmarks<faceapi.WithFaceDetection<{}>>
 
@@ -57,6 +59,38 @@ export class FaceApiDetector implements FaceDetectorContract {
   private async loadModels(): Promise<void> {
     if (this.modelsLoaded) {
       return
+    }
+
+    // Explicitly initialize TensorFlow.js backend
+    const tf = faceapi.tf
+    if (tf) {
+      // Try to initialize backend if not already set
+      try {
+        const currentBackend = tf.getBackend()
+        if (!currentBackend) {
+          // No backend set, try webgl first
+          if (this.options.debug) {
+            console.log('[FaceDetector] Initializing TensorFlow.js backend...')
+          }
+          try {
+            tf.setBackend('webgl')
+            if (this.options.debug) {
+              console.log('[FaceDetector] Using WebGL backend')
+            }
+          } catch (e) {
+            if (this.options.debug) {
+              console.warn('[FaceDetector] WebGL not available, using CPU')
+            }
+            tf.setBackend('cpu')
+          }
+        } else if (this.options.debug) {
+          console.log(`[FaceDetector] Backend already initialized: ${currentBackend}`)
+        }
+      } catch (e) {
+        if (this.options.debug) {
+          console.warn('[FaceDetector] Backend initialization warning:', e)
+        }
+      }
     }
 
     const basePath = this.options.modelBasePath ?? '/face-api'

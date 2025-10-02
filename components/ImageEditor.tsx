@@ -4,6 +4,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react'
 import CanvasEditor, { CanvasEditorRef } from './CanvasEditor'
 import InstructionTooltip from './InstructionTooltip'
 import ErrorDialog from './ErrorDialog'
+import ScanningOverlay from './ScanningOverlay'
 import { useDrawing } from '@/hooks/useDrawing'
 import { useZoomPan } from '@/hooks/useZoomPan'
 import { useTouch } from '@/hooks/useTouch'
@@ -25,6 +26,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const [initialMousePos, setInitialMousePos] = useState<{ x: number; y: number } | null>(null)
   const [canvasOpacity, setCanvasOpacity] = useState(1)
   const [isDetecting, setIsDetecting] = useState(false)
+  const [isScanning, setIsScanning] = useState(false)
   const [showError, setShowError] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   
@@ -116,13 +118,29 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       return
     }
 
+    // Setup unhandled rejection handler for this detection session
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error('[FaceDetector] Unhandled rejection:', event.reason)
+      setErrorMessage('AI検出でエラーが発生しました')
+      setShowError(true)
+      setIsScanning(false)
+      setIsDetecting(false)
+      event.preventDefault()
+    }
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+
     try {
+      setIsScanning(true)
       setIsDetecting(true)
+
       const detector = faceDetectorRef.current
       if (!detector) {
         console.warn('[FaceDetector] Detector not initialized')
         setErrorMessage('AI検出の初期化に失敗しました')
         setShowError(true)
+        setIsScanning(false)
+        window.removeEventListener('unhandledrejection', handleUnhandledRejection)
         return
       }
       const response = await fetch(imageData.dataURL)
@@ -217,12 +235,22 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
         }
         return [...prev, ...uniqueLines]
       })
+
+      // Remove handler after successful completion
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+
+      // Wait for scanning animation to complete before hiding overlay
+      setTimeout(() => {
+        setIsScanning(false)
+      }, 2500)
+      setIsDetecting(false)
     } catch (error) {
       console.error('[FaceDetector] Detection failed', error)
       setErrorMessage('AI検出でエラーが発生しました')
       setShowError(true)
-    } finally {
+      setIsScanning(false)
       setIsDetecting(false)
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
     }
   }, [imageData, logFaces, imageSize.height, imageSize.width, setDrawingLines])
 
@@ -631,6 +659,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
           setShowAiTooltip(true)
         }}
       />
+      <ScanningOverlay visible={isScanning} />
       <ErrorDialog
         visible={showError}
         message={errorMessage}

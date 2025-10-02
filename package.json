@@ -12,7 +12,9 @@
     "setup": "tsx scripts/setup-face-api.ts"
   },
   "dependencies": {
-    "face-api.js": "^0.22.2",
+    "@tensorflow/tfjs-backend-cpu": "^4.22.0",
+    "@tensorflow/tfjs-backend-webgl": "^4.22.0",
+    "face-api.js": "0.22.2",
     "lucide-react": "^0.514.0",
     "next": "^15.3.3",
     "react": "^19.1.0",
@@ -28,6 +30,7 @@
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
     "tsx": "^4.20.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vercel": "^25.2.0"
   }
 }
