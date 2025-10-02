@@ -42,9 +42,12 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   useEffect(() => {
     faceDetectorRef.current = new FaceDetectorLazy({
       maxFaces: 12,
-      minDetectionConfidence: 0.45,
-      minFaceAreaRatio: 0.00008,
-      mergeIoUThreshold: 0.35,
+      minDetectionConfidence: 0.35,
+      minFaceAreaRatio: 0.00003,
+      mergeIoUThreshold: 0.4,
+      additionalScales: [1.5, 2],
+      maxUpscaleFactor: 2.4,
+      upscaleTargetDimension: 1800,
       modelBasePath: '/face-api',
       debug: true
     })

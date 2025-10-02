@@ -6,6 +6,9 @@ type DetectionWithLandmarks = faceapi.WithFaceLandmarks<faceapi.WithFaceDetectio
 export type FaceApiDetectorOptions = FaceDetectorOptions & {
   minFaceAreaRatio?: number
   mergeIoUThreshold?: number
+  maxUpscaleFactor?: number
+  upscaleTargetDimension?: number
+  additionalScales?: number[]
 }
 
 export class FaceApiDetector implements FaceDetectorContract {
@@ -18,15 +21,21 @@ export class FaceApiDetector implements FaceDetectorContract {
     minFaceAreaRatio: number
     mergeIoUThreshold: number
     debug: boolean
+    maxUpscaleFactor: number
+    upscaleTargetDimension: number
+    additionalScales: number[]
   }
 
   constructor(options: FaceApiDetectorOptions = {}) {
     const {
       maxFaces = 12,
-      minDetectionConfidence = 0.45,
+      minDetectionConfidence = 0.4,
       modelBasePath = '/face-api',
-      minFaceAreaRatio = 0.00008,
+      minFaceAreaRatio = 0.00005,
       mergeIoUThreshold = 0.35,
+      maxUpscaleFactor = 2.4,
+      upscaleTargetDimension = 1600,
+      additionalScales = [],
       debug = false
     } = options
 
@@ -36,6 +45,9 @@ export class FaceApiDetector implements FaceDetectorContract {
       modelBasePath,
       minFaceAreaRatio,
       mergeIoUThreshold,
+      maxUpscaleFactor,
+      upscaleTargetDimension,
+      additionalScales: additionalScales.filter(scale => Number.isFinite(scale) && scale > 1),
       debug
     }
 
@@ -161,48 +173,97 @@ export class FaceApiDetector implements FaceDetectorContract {
     const imageArea = image.width * image.height
     const minFaceArea = imageArea * this.options.minFaceAreaRatio
 
-    const detectorOptions = new faceapi.SsdMobilenetv1Options({
-      minConfidence: this.options.minDetectionConfidence
+    const maxDimension = Math.max(image.width, image.height)
+    const scales = new Set<number>([1])
+
+    this.options.additionalScales.forEach((scale) => {
+      if (scale > 1) {
+        scales.add(scale)
+      }
     })
 
-    const detections = await faceapi
-      .detectAllFaces(image, detectorOptions)
-      .withFaceLandmarks()
+    if (maxDimension > 0 && maxDimension < this.options.upscaleTargetDimension) {
+      const autoScale = Math.min(
+        this.options.maxUpscaleFactor,
+        this.options.upscaleTargetDimension / maxDimension
+      )
+      if (autoScale > 1.05) {
+        scales.add(Number(autoScale.toFixed(2)))
+      }
+    }
 
-    const sorted = detections
-      .slice()
-      .sort((a, b) => (b.detection.score ?? 0) - (a.detection.score ?? 0))
+    const orderedScales = Array.from(scales).sort((a, b) => a - b)
 
     const selected: DetectionWithLandmarks[] = []
 
-    for (const detection of sorted) {
-      const box = detection.detection.box
-      const area = box.width * box.height
-      if (area < minFaceArea) {
-        if (this.options.debug) {
-          const score = detection.detection.score ?? 0
-          console.log('[FaceDetector] Skip small detection', {
-            score: score.toFixed(3),
-            width: box.width,
-            height: box.height
-          })
+    for (const scale of orderedScales) {
+      const minConfidence = Math.max(0.2, this.options.minDetectionConfidence - (scale - 1) * 0.15)
+      const detectorOptions = new faceapi.SsdMobilenetv1Options({
+        minConfidence
+      })
+
+      let detections: DetectionWithLandmarks[] = []
+
+      if (scale === 1) {
+        detections = await faceapi
+          .detectAllFaces(image, detectorOptions)
+          .withFaceLandmarks()
+      } else {
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(image.width * scale)
+        canvas.height = Math.round(image.height * scale)
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          continue
         }
-        continue
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+        const scaledDetections = await faceapi
+          .detectAllFaces(canvas, detectorOptions)
+          .withFaceLandmarks()
+
+        detections = faceapi.resizeResults(
+          scaledDetections,
+          { width: image.width, height: image.height }
+        ) as DetectionWithLandmarks[]
       }
 
-      let overlaps = false
-      for (const existing of selected) {
-        const iou = this.computeIoU(existing.detection.box, box)
-        if (iou >= this.options.mergeIoUThreshold) {
-          overlaps = true
-          break
-        }
-      }
+      const sorted = detections
+        .slice()
+        .sort((a, b) => (b.detection.score ?? 0) - (a.detection.score ?? 0))
 
-      if (!overlaps) {
-        selected.push(detection)
+      for (const detection of sorted) {
+        const box = detection.detection.box
+        const area = box.width * box.height
+        if (area < minFaceArea) {
+          if (this.options.debug) {
+            const score = detection.detection.score ?? 0
+            console.log('[FaceDetector] Skip small detection', {
+              score: score.toFixed(3),
+              width: box.width,
+              height: box.height,
+              scale
+            })
+          }
+          continue
+        }
+
+        let overlaps = false
+        for (const existing of selected) {
+          const iou = this.computeIoU(existing.detection.box, box)
+          if (iou >= this.options.mergeIoUThreshold) {
+            overlaps = true
+            break
+          }
+        }
+
+        if (!overlaps) {
+          selected.push(detection)
+        }
       }
     }
+
+    selected.sort((a, b) => (b.detection.score ?? 0) - (a.detection.score ?? 0))
 
     const limited = this.options.maxFaces > 0
       ? selected.slice(0, this.options.maxFaces)
