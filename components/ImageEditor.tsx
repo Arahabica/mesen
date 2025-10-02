@@ -7,10 +7,10 @@ import { useDrawing } from '@/hooks/useDrawing'
 import { useZoomPan } from '@/hooks/useZoomPan'
 import { useTouch } from '@/hooks/useTouch'
 import { useInstructionTooltip } from '@/hooks/useInstructionTooltip'
-import { ImageSize, ImageData } from '@/types/editor'
-import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS } from '@/constants/editor'
+import { ImageSize, ImageData, Line } from '@/types/editor'
+import { LONG_PRESS_DURATION, getDynamicThickness, getDefaultThickness, getThicknessOptions, AUTO_THICKNESS_SCREEN_RATIO, LINE_ZOOM_EXCLUSION_RADIUS } from '@/constants/editor'
 import type { Face } from '@/ai/types'
-import { MediaPipeFaceDetectorLazy } from '@/ai/MediaPipeFaceDetectorLazy'
+import { FaceApiDetector } from '@/ai/FaceApiDetector'
 
 interface ImageEditorProps {
   initialImage: ImageData
@@ -31,17 +31,21 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const mouseHasMovedRef = useRef<boolean>(false)
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
   const initialTouchRef = useRef<{ x: number; y: number } | null>(null)
-  const faceDetectorRef = useRef<MediaPipeFaceDetectorLazy | null>(null)
+  const faceDetectorRef = useRef<FaceApiDetector | null>(null)
   
   const drawing = useDrawing(lineThickness, imageSize.width, imageSize.height)
+  const setDrawingLines = drawing.setLines
   const zoomPan = useZoomPan(imageSize, containerRef)
   const touch = useTouch()
   const { showInstructionTooltip, showInstruction, hideInstruction } = useInstructionTooltip()
 
   useEffect(() => {
-    faceDetectorRef.current = new MediaPipeFaceDetectorLazy({
+    faceDetectorRef.current = new FaceApiDetector({
       maxFaces: 12,
-      minDetectionConfidence: 0.08,
+      minDetectionConfidence: 0.45,
+      minFaceAreaRatio: 0.00008,
+      mergeIoUThreshold: 0.35,
+      modelBasePath: '/face-api',
       debug: true
     })
 
@@ -116,12 +120,100 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       const blob = await response.blob()
       const faces = await detector.detect(blob)
       logFaces(faces, imageData.filename)
+
+      if (faces.length === 0) {
+        return
+      }
+
+      if (imageSize.width === 0 || imageSize.height === 0) {
+        console.warn('[FaceDetector] Image size unavailable; skipping auto eye lines')
+        return
+      }
+
+      const thicknessOptions = getThicknessOptions(imageSize.width, imageSize.height).filter(option => option > 0)
+      if (thicknessOptions.length === 0) {
+        console.warn('[FaceDetector] No valid thickness options; skipping auto eye lines')
+        return
+      }
+
+      const createLineForFace = (face: Face): Line | null => {
+        if (!face.landmarks || face.landmarks.length < 48) {
+          return null
+        }
+
+        const leftCorner = face.landmarks[36]
+        const rightCorner = face.landmarks[45]
+
+        if (!leftCorner || !rightCorner) {
+          return null
+        }
+
+        const dx = rightCorner.x - leftCorner.x
+        const dy = rightCorner.y - leftCorner.y
+        const length = Math.hypot(dx, dy)
+
+        if (!Number.isFinite(length) || length < 2) {
+          return null
+        }
+
+        const extension = length * 0.2
+        const angle = Math.atan2(dy, dx)
+
+        const startX = leftCorner.x - extension * Math.cos(angle)
+        const startY = leftCorner.y - extension * Math.sin(angle)
+        const endX = rightCorner.x + extension * Math.cos(angle)
+        const endY = rightCorner.y + extension * Math.sin(angle)
+
+        const lineA = dy
+        const lineB = leftCorner.x - rightCorner.x
+        const lineC = rightCorner.x * leftCorner.y - leftCorner.x * rightCorner.y
+        const denom = Math.hypot(lineA, lineB) || 1
+
+        const eyeContourIndices = [37, 38, 39, 40, 41, 42, 43, 44, 46, 47]
+        let maxDistance = 0
+
+        eyeContourIndices.forEach(index => {
+          const point = face.landmarks?.[index]
+          if (!point) return
+          const distance = Math.abs(lineA * point.x + lineB * point.y + lineC) / denom
+          if (distance > maxDistance) {
+            maxDistance = distance
+          }
+        })
+
+        const baseThickness = Math.max(maxDistance * 4, 2)
+        const selectedThickness = thicknessOptions.find(option => option >= baseThickness) ?? thicknessOptions[thicknessOptions.length - 1]
+
+        return {
+          start: { x: Math.round(startX), y: Math.round(startY) },
+          end: { x: Math.round(endX), y: Math.round(endY) },
+          thickness: selectedThickness
+        }
+      }
+
+      const eyeLines = faces
+        .map(createLineForFace)
+        .filter((line): line is Line => line !== null)
+
+      if (eyeLines.length === 0) {
+        return
+      }
+
+      setDrawingLines(prev => {
+        const keyOf = (line: Line) => `${line.start.x}:${line.start.y}:${line.end.x}:${line.end.y}:${line.thickness}`
+        const existingKeys = new Set(prev.map(keyOf))
+        const uniqueLines = eyeLines.filter(line => !existingKeys.has(keyOf(line)))
+        if (uniqueLines.length === 0) {
+          return prev
+        }
+        return [...prev, ...uniqueLines]
+      })
     } catch (error) {
       console.error('[FaceDetector] Detection failed', error)
     } finally {
       setIsDetecting(false)
     }
-  }, [imageData, logFaces])
+  }, [imageData, logFaces, imageSize.height, imageSize.width, setDrawingLines])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const { clientX, clientY } = e

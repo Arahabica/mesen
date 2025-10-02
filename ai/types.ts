@@ -9,12 +9,18 @@ export interface Face {
   y: number;
   width: number;
   height: number;
+  landmarks?: Eye[];
 }
 
 export interface FaceDetectorOptions {
   maxFaces?: number;
   minDetectionConfidence?: number;
   debug?: boolean;
+  modelBasePath?: string;
+  inputSize?: number;
+  inputSizes?: number[];
+  minFaceAreaRatio?: number;
+  mergeIoUThreshold?: number;
 }
 
 export interface FaceDetector {
