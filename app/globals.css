@@ -68,3 +68,7 @@ html, body {
     opacity: 1;
   }
 }
+
+.gothic-font {
+  font-family: "Helvetica Neue", "Helvetica", "Hiragino Sans", "Arial", "Yu Gothic", "Meiryo", sans-serif;
+}

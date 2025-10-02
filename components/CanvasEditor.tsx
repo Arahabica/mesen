@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle, useCallback } from 'react'
-import { X, RotateCcw, Download, Expand, Sparkles } from 'lucide-react'
+import { X, RotateCcw, Download, Expand } from 'lucide-react'
 import { Line, LoupeState, DrawingMode } from '@/types/editor'
 import Loupe from './Loupe'
 import TemporalTooltip from './TemporalTooltip'
@@ -316,14 +316,14 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
         <button
           onClick={onDetectFaces}
           disabled={isDetectingFaces || !isImageLoaded}
-          className={`w-12 h-12 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all ${
+          className={`w-9 h-9 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all text-base gothic-font ${
             isDetectingFaces || !isImageLoaded
               ? 'opacity-40 cursor-not-allowed'
               : 'hover:bg-gray-600'
           } ${isDetectingFaces ? 'animate-pulse' : ''}`}
           aria-label="AIで顔を検出"
         >
-          <Sparkles size={24} />
+          AI
         </button>
       </div>
 
