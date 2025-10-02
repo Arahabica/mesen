@@ -94,6 +94,12 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
 
     if (clickedLineIndex !== -1) {
       drawing.selectLine(clickedLineIndex, coords)
+
+      // Show delete zone for PC
+      const container = containerRef.current
+      if (container) {
+        drawing.showDeleteZone(clientY, container.clientHeight)
+      }
     } else {
       longPressTimerRef.current = setTimeout(() => {
         if (!mouseHasMovedRef.current) {
@@ -113,10 +119,10 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
-    
+
     if (initialMousePos && !mouseHasMovedRef.current) {
       const distance = Math.sqrt(
-        Math.pow(e.clientX - initialMousePos.x, 2) + 
+        Math.pow(e.clientX - initialMousePos.x, 2) +
         Math.pow(e.clientY - initialMousePos.y, 2)
       )
       if (distance > 5) {
@@ -127,13 +133,30 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
         }
       }
     }
-    
+
     if (drawing.isDrawing) {
       const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
       drawing.draw(coords)
     } else if (drawing.selectedLineIndex !== null) {
+      // Enter moveLine mode when dragging starts (PC)
+      if (drawing.drawingMode !== 'moveLine' && mouseHasMovedRef.current) {
+        drawing.setDrawingMode('moveLine')
+      }
+
       const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
       drawing.dragLine(coords)
+
+      // Check proximity to delete zone for PC
+      const container = containerRef.current
+      if (container && drawing.deleteZoneState.visible) {
+        const screenHeight = container.clientHeight
+        const deleteZoneY = drawing.deleteZoneState.position === 'top'
+          ? DELETE_ZONE_HEIGHT / 2
+          : screenHeight - DELETE_ZONE_HEIGHT / 2
+        const distance = Math.abs(e.clientY - deleteZoneY)
+        const isNear = distance < DELETE_ZONE_ACTIVATION_DISTANCE
+        drawing.updateDeleteZoneProximity(isNear)
+      }
     } else if (zoomPan.isDragging && !drawing.isDrawing && drawing.drawingMode === 'move') {
       zoomPan.drag(e.clientX, e.clientY)
     }
@@ -145,7 +168,14 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       longPressTimerRef.current = null
     }
 
-    if (Date.now() - mouseStartTimeRef.current < LONG_PRESS_DURATION && !drawing.isDrawing && !mouseHasMovedRef.current) {
+    // Check if we should delete the line (PC)
+    if (drawing.selectedLineIndex !== null &&
+        drawing.deleteZoneState.visible &&
+        drawing.deleteZoneState.isNearby &&
+        mouseHasMovedRef.current) {
+      // Delete the line
+      drawing.deleteLine(drawing.selectedLineIndex)
+    } else if (Date.now() - mouseStartTimeRef.current < LONG_PRESS_DURATION && !drawing.isDrawing && !mouseHasMovedRef.current) {
       const coords = zoomPan.getCanvasCoordinates(e.clientX, e.clientY)
       const clickedLineIndex = drawing.findLineAtPoint(coords)
 
@@ -156,6 +186,11 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
 
     drawing.stopDrawing()
     drawing.stopDraggingLine()
+    drawing.hideDeleteZone()
+    // Reset drawing mode to move after line drag (PC)
+    if (drawing.drawingMode === 'moveLine') {
+      drawing.setDrawingMode('move')
+    }
     zoomPan.stopDragging()
     setInitialMousePos(null)
     mouseHasMovedRef.current = false
