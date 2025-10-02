@@ -4,6 +4,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react'
 import CanvasEditor, { CanvasEditorRef } from './CanvasEditor'
 import InstructionTooltip from './InstructionTooltip'
 import ErrorDialog from './ErrorDialog'
+import NoFaceDialog from './NoFaceDialog'
 import ScanningOverlay from './ScanningOverlay'
 import { useDrawing } from '@/hooks/useDrawing'
 import { useZoomPan } from '@/hooks/useZoomPan'
@@ -29,6 +30,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const [isScanning, setIsScanning] = useState(false)
   const [showError, setShowError] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [showNoFace, setShowNoFace] = useState(false)
   
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasEditorRef = useRef<CanvasEditorRef>(null)
@@ -149,6 +151,10 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       logFaces(faces, imageData.filename)
 
       if (faces.length === 0) {
+        setShowNoFace(true)
+        setIsScanning(false)
+        setIsDetecting(false)
+        window.removeEventListener('unhandledrejection', handleUnhandledRejection)
         return
       }
 
@@ -658,6 +664,10 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
         }}
       />
       <ScanningOverlay visible={isScanning} />
+      <NoFaceDialog
+        visible={showNoFace}
+        onHide={() => setShowNoFace(false)}
+      />
       <ErrorDialog
         visible={showError}
         message={errorMessage}

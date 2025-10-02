@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react'
-import { AlertCircle } from 'lucide-react'
+import { SearchX } from 'lucide-react'
 
-interface ErrorDialogProps {
+interface NoFaceDialogProps {
   visible: boolean
-  message: string
   onHide: () => void
 }
 
-export default function ErrorDialog({ visible, message, onHide }: ErrorDialogProps) {
+export default function NoFaceDialog({ visible, onHide }: NoFaceDialogProps) {
   const [isVisible, setIsVisible] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const [isFadingIn, setIsFadingIn] = useState(false)
@@ -66,10 +65,10 @@ export default function ErrorDialog({ visible, message, onHide }: ErrorDialogPro
       >
         <div className="flex flex-col items-center space-y-4">
           <div className="w-16 h-16 flex items-center justify-center">
-            <AlertCircle size={64} className="text-white" />
+            <SearchX size={64} className="text-white" />
           </div>
           <p className="text-white text-lg font-medium text-center">
-            {message}
+            顔が検出されませんでした
           </p>
         </div>
       </div>
