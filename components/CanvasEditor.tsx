@@ -4,6 +4,7 @@ import { Line, LoupeState, DrawingMode, DeleteZoneState } from '@/types/editor'
 import Loupe from './Loupe'
 import TemporalTooltip from './TemporalTooltip'
 import DeleteZone from './DeleteZone'
+import { TooltipStateManager, TooltipType } from '@/utils/tooltipStateManager'
 
 interface CanvasEditorProps {
   image: string
@@ -42,6 +43,12 @@ interface CanvasEditorProps {
 
 export interface CanvasEditorRef {
   getCanvas: () => HTMLCanvasElement | null
+}
+
+type ShowTooltipOptions = {
+  variant?: 'manual' | 'ai'
+  manualLineIndex?: number
+  force?: boolean
 }
 
 const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
@@ -88,17 +95,71 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
 
   // State to track if image is loaded
   const [isImageLoaded, setIsImageLoaded] = useState(false)
-  // Tooltip states
-  const [showResetTooltip, setShowResetTooltip] = useState(false)
-  const [showThicknessTooltip, setShowThicknessTooltip] = useState(false)
-  const [showUndoTooltip, setShowUndoTooltip] = useState(false)
-  const [showDownloadTooltip, setShowDownloadTooltip] = useState(false)
-  const [showAiTooltip, setShowAiTooltip] = useState(false)
-  const [hasShownManualThicknessTooltip, setHasShownManualThicknessTooltip] = useState(false)
-  const [hasShownAiThicknessTooltip, setHasShownAiThicknessTooltip] = useState(false)
+  const tooltipManagerRef = useRef(new TooltipStateManager())
+  const pendingTooltipRef = useRef<{ type: TooltipType; options?: ShowTooltipOptions } | null>(null)
+  const [shownTooltipType, setShownTooltipType] = useState<TooltipType | null>(null)
   const [thicknessTooltipVariant, setThicknessTooltipVariant] = useState<'manual' | 'ai' | null>(null)
   const [manualTooltipLineIndex, setManualTooltipLineIndex] = useState<number | null>(null)
   const previousLinesCountRef = useRef(lines.length)
+
+  const showTooltip = useCallback(
+    (type: TooltipType, options?: ShowTooltipOptions) => {
+      const manager = tooltipManagerRef.current
+      const force = options?.force ?? false
+
+      if (!force && shownTooltipType !== null && shownTooltipType !== type) {
+        pendingTooltipRef.current = { type, options }
+        return false
+      }
+
+      if (manager.shouldShow(type)) {
+        manager.markShown(type)
+      } else if (shownTooltipType !== type) {
+        return false
+      }
+
+      pendingTooltipRef.current = null
+
+      setShownTooltipType(type)
+
+      if (type === 'thickness') {
+        setThicknessTooltipVariant(options?.variant ?? null)
+        setManualTooltipLineIndex(options?.manualLineIndex ?? null)
+      } else {
+        setThicknessTooltipVariant(null)
+        setManualTooltipLineIndex(null)
+      }
+
+      return true
+    },
+    [shownTooltipType]
+  )
+
+  const handleTooltipClose = useCallback(
+    (type: TooltipType) => {
+      const pending = pendingTooltipRef.current
+      setShownTooltipType(prev => (prev === type ? null : prev))
+
+      let sequentialDisplayed = false
+
+      if (type === 'thickness') {
+        setThicknessTooltipVariant(null)
+        setManualTooltipLineIndex(null)
+        sequentialDisplayed = showTooltip('undo', { force: true })
+      } else if (type === 'undo') {
+        sequentialDisplayed = showTooltip('download', { force: true })
+      }
+
+      if (!sequentialDisplayed && pending) {
+        pendingTooltipRef.current = null
+        const displayed = showTooltip(pending.type, { ...pending.options, force: true })
+        if (!displayed) {
+          pendingTooltipRef.current = pending
+        }
+      }
+    },
+    [showTooltip]
+  )
 
   // Handle image loading and create base canvas
   useEffect(() => {
@@ -290,76 +351,76 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   // Handle tooltip display logic
   useEffect(() => {
     if (!isAtInitialScale) {
-      setShowResetTooltip(true)
+      showTooltip('reset')
     }
-  }, [isAtInitialScale])
+  }, [isAtInitialScale, showTooltip])
 
   // Handle sequential tooltip sequence when line is confirmed
   useEffect(() => {
     const previousCount = previousLinesCountRef.current
 
     if (lines.length > previousCount) {
+      const newIndex = lines.length - 1
+
       if (isAiDetectionLine) {
-        if (!hasShownAiThicknessTooltip) {
-          setThicknessTooltipVariant('ai')
-          setShowThicknessTooltip(true)
-          setHasShownAiThicknessTooltip(true)
-          setManualTooltipLineIndex(null)
-        }
-      } else if (!hasShownManualThicknessTooltip) {
-        const newIndex = lines.length - 1
-        if (newIndex >= 0) {
+        showTooltip('thickness', { variant: 'ai' })
+      } else if (newIndex >= 0) {
+        const displayed = showTooltip('thickness', {
+          variant: 'manual',
+          manualLineIndex: newIndex
+        })
+
+        if (!displayed && shownTooltipType === 'thickness' && thicknessTooltipVariant === 'manual') {
           setManualTooltipLineIndex(newIndex)
-          setThicknessTooltipVariant('manual')
-          setShowThicknessTooltip(true)
-          setHasShownManualThicknessTooltip(true)
         }
       }
     }
 
     if (
+      shownTooltipType === 'thickness' &&
+      thicknessTooltipVariant === 'manual' &&
       manualTooltipLineIndex !== null &&
       (manualTooltipLineIndex < 0 || manualTooltipLineIndex >= lines.length)
     ) {
       setManualTooltipLineIndex(null)
-      if (thicknessTooltipVariant === 'manual') {
-        setShowThicknessTooltip(false)
-        setThicknessTooltipVariant(null)
-      }
     }
 
     previousLinesCountRef.current = lines.length
   }, [
     lines,
     isAiDetectionLine,
-    hasShownAiThicknessTooltip,
-    hasShownManualThicknessTooltip,
     manualTooltipLineIndex,
-    thicknessTooltipVariant
+    thicknessTooltipVariant,
+    showTooltip,
+    shownTooltipType
   ])
 
   const onThicknessTooltipClose = useCallback(() => {
-    setShowThicknessTooltip(false)
-    setThicknessTooltipVariant(null)
-    setManualTooltipLineIndex(null)
-    setShowUndoTooltip(true)
-  }, []);
+    handleTooltipClose('thickness')
+  }, [handleTooltipClose])
 
   const onUndoTooltipClose = useCallback(() => {
-    setShowUndoTooltip(false)
-    setShowDownloadTooltip(true)
-  }, []);
+    handleTooltipClose('undo')
+  }, [handleTooltipClose])
 
   const onDownloadTooltipClose = useCallback(() => {
-    setShowDownloadTooltip(false)
-  }, []);
+    handleTooltipClose('download')
+  }, [handleTooltipClose])
+
+  const onResetTooltipClose = useCallback(() => {
+    handleTooltipClose('reset')
+  }, [handleTooltipClose])
+
+  const onAiTooltipClose = useCallback(() => {
+    handleTooltipClose('ai')
+  }, [handleTooltipClose])
 
   // Show AI tooltip when instruction tooltip is closed
   useEffect(() => {
     if (showAiTooltipTrigger && isImageLoaded) {
-      setShowAiTooltip(true)
+      showTooltip('ai')
     }
-  }, [showAiTooltipTrigger, isImageLoaded]);
+  }, [showAiTooltipTrigger, isImageLoaded, showTooltip])
 
   let manualThicknessTooltipPosition: { x: number; y: number } | null = null
   if (manualTooltipLineIndex !== null) {
@@ -410,7 +471,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           </button>
           <TemporalTooltip
             text="元に戻す"
-            show={showUndoTooltip}
+            show={shownTooltipType === 'undo'}
             duration={1400}
             onClose={onUndoTooltipClose}
             className="bottom-full left-1/2 -translate-x-1/2 mb-2"
@@ -432,7 +493,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           </button>
           <TemporalTooltip
             text="ダウンロード"
-            show={showDownloadTooltip}
+            show={shownTooltipType === 'download'}
             duration={1400}
             onClose={onDownloadTooltipClose}
             className="bottom-full left-1/2 -translate-x-1/2 mb-2"
@@ -454,8 +515,9 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           </button>
           <TemporalTooltip
             text="元の位置に戻す"
-            show={showResetTooltip}
+            show={shownTooltipType === 'reset'}
             duration={2500}
+            onClose={onResetTooltipClose}
             className="bottom-full left-1/2 -translate-x-1/2 mb-2"
           />
         </div>
@@ -483,9 +545,9 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           </button>
           <TemporalTooltip
             text="AIで自動検出"
-            show={showAiTooltip}
+            show={shownTooltipType === 'ai'}
             duration={2000}
-            onClose={() => setShowAiTooltip(false)}
+            onClose={onAiTooltipClose}
             className="bottom-full right-0 mb-2"
           />
         </div>
@@ -536,19 +598,19 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           />
         )}
         {/* Thickness tooltip on line center or screen center for AI detection */}
-        {showThicknessTooltip && thicknessTooltipVariant === 'ai' && (
+        {shownTooltipType === 'thickness' && thicknessTooltipVariant === 'ai' && (
           <TemporalTooltip
             text="タップで太さを変えられます"
-            show={showThicknessTooltip}
+            show={shownTooltipType === 'thickness'}
             duration={1200}
             className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"
             onClose={onThicknessTooltipClose}
           />
         )}
-        {showThicknessTooltip && thicknessTooltipVariant === 'manual' && manualThicknessTooltipPosition && (
+        {shownTooltipType === 'thickness' && thicknessTooltipVariant === 'manual' && manualThicknessTooltipPosition && (
           <TemporalTooltip
             text="タップで太さを変えられます"
-            show={showThicknessTooltip}
+            show={shownTooltipType === 'thickness'}
             duration={1200}
             className="z-20"
             onClose={onThicknessTooltipClose}
