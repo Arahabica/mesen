@@ -140,8 +140,10 @@ export function useFaceDetection(options: UseFaceDetectionOptions): UseFaceDetec
       await new Promise(resolve => setTimeout(resolve, frameInterval))
     }
 
-    // Convert all green lines to black
-    onLinesAdd(tempGreenLines)
+    // Convert all green lines to black - add one by one to history
+    for (const line of tempGreenLines) {
+      onLinesAdd([line])
+    }
     setGreenLines([])
     setColorTransitionProgress(0)
   }, [onLinesAdd])
