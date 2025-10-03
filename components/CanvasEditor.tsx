@@ -94,8 +94,11 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   const [showUndoTooltip, setShowUndoTooltip] = useState(false)
   const [showDownloadTooltip, setShowDownloadTooltip] = useState(false)
   const [showAiTooltip, setShowAiTooltip] = useState(false)
-  const [shownThicknessTooltip, setShownThicknessTooltip] = useState(false)
-  const [lastConfirmedLineCenter, setLastConfirmedLineCenter] = useState<{ x: number; y: number } | null>(null)
+  const [hasShownManualThicknessTooltip, setHasShownManualThicknessTooltip] = useState(false)
+  const [hasShownAiThicknessTooltip, setHasShownAiThicknessTooltip] = useState(false)
+  const [thicknessTooltipVariant, setThicknessTooltipVariant] = useState<'manual' | 'ai' | null>(null)
+  const [manualTooltipLineIndex, setManualTooltipLineIndex] = useState<number | null>(null)
+  const previousLinesCountRef = useRef(lines.length)
 
   // Handle image loading and create base canvas
   useEffect(() => {
@@ -293,21 +296,52 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
 
   // Handle sequential tooltip sequence when line is confirmed
   useEffect(() => {
-    if (!shownThicknessTooltip && lines.length > 0) {
-      const lastLine = lines[lines.length - 1]
-      const lineCenter = {
-        x: (lastLine.start.x + lastLine.end.x) / 2,
-        y: (lastLine.start.y + lastLine.end.y) / 2
+    const previousCount = previousLinesCountRef.current
+
+    if (lines.length > previousCount) {
+      if (isAiDetectionLine) {
+        if (!hasShownAiThicknessTooltip) {
+          setThicknessTooltipVariant('ai')
+          setShowThicknessTooltip(true)
+          setHasShownAiThicknessTooltip(true)
+          setManualTooltipLineIndex(null)
+        }
+      } else if (!hasShownManualThicknessTooltip) {
+        const newIndex = lines.length - 1
+        if (newIndex >= 0) {
+          setManualTooltipLineIndex(newIndex)
+          setThicknessTooltipVariant('manual')
+          setShowThicknessTooltip(true)
+          setHasShownManualThicknessTooltip(true)
+        }
       }
-      setLastConfirmedLineCenter(lineCenter)
-      setShownThicknessTooltip(true)
-      setTimeout(() => {
-        setShowThicknessTooltip(true);
-      }, 200)
     }
-  }, [shownThicknessTooltip, lines])
+
+    if (
+      manualTooltipLineIndex !== null &&
+      (manualTooltipLineIndex < 0 || manualTooltipLineIndex >= lines.length)
+    ) {
+      setManualTooltipLineIndex(null)
+      if (thicknessTooltipVariant === 'manual') {
+        setShowThicknessTooltip(false)
+        setThicknessTooltipVariant(null)
+      }
+    }
+
+    previousLinesCountRef.current = lines.length
+  }, [
+    lines,
+    isAiDetectionLine,
+    hasShownAiThicknessTooltip,
+    hasShownManualThicknessTooltip,
+    manualTooltipLineIndex,
+    thicknessTooltipVariant
+  ])
 
   const onThicknessTooltipClose = useCallback(() => {
+    setShowThicknessTooltip(false)
+    setThicknessTooltipVariant(null)
+    setManualTooltipLineIndex(null)
     setShowUndoTooltip(true)
   }, []);
 
@@ -326,6 +360,17 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
       setShowAiTooltip(true)
     }
   }, [showAiTooltipTrigger, isImageLoaded]);
+
+  let manualThicknessTooltipPosition: { x: number; y: number } | null = null
+  if (manualTooltipLineIndex !== null) {
+    const targetLine = lines[manualTooltipLineIndex]
+    if (targetLine) {
+      manualThicknessTooltipPosition = {
+        x: ((targetLine.start.x + targetLine.end.x) / 2) * scale + position.x,
+        y: ((targetLine.start.y + targetLine.end.y) / 2) * scale + position.y
+      }
+    }
+  }
 
   const isMoveLineMode = drawingMode === 'moveLine'
 
@@ -491,31 +536,25 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
           />
         )}
         {/* Thickness tooltip on line center or screen center for AI detection */}
-        {showThicknessTooltip && (
-          isAiDetectionLine ? (
-            <TemporalTooltip
-              text="タップで太さを変えられます"
-              show={showThicknessTooltip}
-              duration={1200}
-              className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"
-              onClose={onThicknessTooltipClose}
-            />
-          ) : (
-            lastConfirmedLineCenter && (
-              <TemporalTooltip
-                text="タップで太さを変えられます"
-                show={showThicknessTooltip}
-                duration={1200}
-                className="z-20"
-                onClose={onThicknessTooltipClose}
-                targetPosition={{
-                  x: lastConfirmedLineCenter.x * scale + position.x,
-                  y: lastConfirmedLineCenter.y * scale + position.y
-                }}
-                preferredPlacement="top"
-              />
-            )
-          )
+        {showThicknessTooltip && thicknessTooltipVariant === 'ai' && (
+          <TemporalTooltip
+            text="タップで太さを変えられます"
+            show={showThicknessTooltip}
+            duration={1200}
+            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"
+            onClose={onThicknessTooltipClose}
+          />
+        )}
+        {showThicknessTooltip && thicknessTooltipVariant === 'manual' && manualThicknessTooltipPosition && (
+          <TemporalTooltip
+            text="タップで太さを変えられます"
+            show={showThicknessTooltip}
+            duration={1200}
+            className="z-20"
+            onClose={onThicknessTooltipClose}
+            targetPosition={manualThicknessTooltipPosition}
+            preferredPlacement="top"
+          />
         )}
       </div>
       <DeleteZone
