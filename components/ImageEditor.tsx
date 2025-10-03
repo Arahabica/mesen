@@ -44,7 +44,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
     imageSize,
     thicknessOptions: getThicknessOptions(imageSize.width, imageSize.height).filter(option => option > 0),
     existingLines: drawing.lines,
-    onLinesAdd: (lines) => setDrawingLines(prev => [...prev, ...lines])
+    onLineAdd: (line) => setDrawingLines(prev => [...prev, line])
   })
 
   // Calculate dynamic thickness based on current viewport and zoom

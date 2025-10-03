@@ -8,7 +8,7 @@ interface UseFaceDetectionOptions {
   imageSize: { width: number; height: number }
   thicknessOptions: number[]
   existingLines: Line[]
-  onLinesAdd: (lines: Line[]) => void
+  onLineAdd: (line: Line) => void
 }
 
 interface UseFaceDetectionReturn {
@@ -29,7 +29,7 @@ interface UseFaceDetectionReturn {
 }
 
 export function useFaceDetection(options: UseFaceDetectionOptions): UseFaceDetectionReturn {
-  const { imageSize, thicknessOptions, existingLines, onLinesAdd } = options
+  const { imageSize, thicknessOptions, existingLines, onLineAdd } = options
 
   const [isDetecting, setIsDetecting] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
@@ -121,6 +121,9 @@ export function useFaceDetection(options: UseFaceDetectionOptions): UseFaceDetec
       tempGreenLines.push(line)
       setGreenLines([...tempGreenLines])
 
+      // Add line to history immediately (1本ずつ履歴に保存)
+      onLineAdd(line)
+
       // Small delay before next line
       await new Promise(resolve => setTimeout(resolve, 50))
     }
@@ -140,11 +143,10 @@ export function useFaceDetection(options: UseFaceDetectionOptions): UseFaceDetec
       await new Promise(resolve => setTimeout(resolve, frameInterval))
     }
 
-    // Convert all green lines to black
-    onLinesAdd(tempGreenLines)
+    // Clear green lines display (already added to history)
     setGreenLines([])
     setColorTransitionProgress(0)
-  }, [onLinesAdd])
+  }, [onLineAdd])
 
   const detectFaces = useCallback(async (imageDataURL: string, filename: string) => {
     // Setup unhandled rejection handler for this detection session
