@@ -5,11 +5,14 @@ import { findBestLoupePosition } from '@/utils/loupePosition'
 
 export function useDrawing(lineThickness: number, imageWidth: number, imageHeight: number) {
   const [lines, setLines] = useState<Line[]>([])
+  const [linesHistory, setLinesHistory] = useState<Line[][]>([[]])
+  const [historyIndex, setHistoryIndex] = useState(0)
   const [currentLine, setCurrentLine] = useState<Line | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [drawStartPoint, setDrawStartPoint] = useState<Position | null>(null)
   const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null)
   const [lineDragOffset, setLineDragOffset] = useState<Position>({ x: 0, y: 0 })
+  const [lineBeforeDrag, setLineBeforeDrag] = useState<Line | null>(null)
   const [drawingMode, setDrawingMode] = useState<DrawingMode>('move')
   const [loupeState, setLoupeState] = useState<LoupeState>({
     visible: false,
@@ -22,22 +25,56 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
     isNearby: false
   })
 
+  // Helper function to save current state to history
+  const saveToHistory = useCallback((newLines: Line[]) => {
+    setLinesHistory(prev => {
+      // Remove any future history after current index
+      const newHistory = prev.slice(0, historyIndex + 1)
+      // Add new state with deep copy to prevent reference issues
+      newHistory.push(newLines.map(line => ({
+        start: { ...line.start },
+        end: { ...line.end },
+        thickness: line.thickness
+      })))
+      return newHistory
+    })
+    setHistoryIndex(prev => prev + 1)
+    setLines(newLines)
+  }, [historyIndex])
+
+  // Public setter that saves to history
+  const setLinesWithHistory = useCallback((updater: Line[] | ((prev: Line[]) => Line[])) => {
+    if (typeof updater === 'function') {
+      const newLines = updater(lines)
+      saveToHistory(newLines)
+    } else {
+      saveToHistory(updater)
+    }
+  }, [lines, saveToHistory])
+
+  // Reset lines and history (for closing image)
+  const resetLines = useCallback(() => {
+    setLines([])
+    setLinesHistory([[]])
+    setHistoryIndex(0)
+  }, [])
+
   const distanceToLineSegment = (point: Position, start: Position, end: Position) => {
     const A = point.x - start.x
     const B = point.y - start.y
     const C = end.x - start.x
     const D = end.y - start.y
-    
+
     const dot = A * C + B * D
     const lenSq = C * C + D * D
     let param = -1
-    
+
     if (lenSq !== 0) {
       param = dot / lenSq
     }
-    
+
     let xx, yy
-    
+
     if (param < 0) {
       xx = start.x
       yy = start.y
@@ -48,10 +85,10 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
       xx = start.x + param * C
       yy = start.y + param * D
     }
-    
+
     const dx = point.x - xx
     const dy = point.y - yy
-    
+
     return Math.sqrt(dx * dx + dy * dy)
   }
 
@@ -101,21 +138,24 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
   const stopDrawing = useCallback(() => {
     if (isDrawing && currentLine && drawStartPoint) {
       const distance = Math.sqrt(
-        Math.pow(currentLine.end.x - currentLine.start.x, 2) + 
+        Math.pow(currentLine.end.x - currentLine.start.x, 2) +
         Math.pow(currentLine.end.y - currentLine.start.y, 2)
       )
       if (distance > CLICK_DISTANCE_THRESHOLD) {
-        setLines([...lines, currentLine])
+        const newLines = [...lines, currentLine]
+        saveToHistory(newLines)
       }
     }
     setIsDrawing(false)
     setCurrentLine(null)
     setDrawStartPoint(null)
-  }, [isDrawing, currentLine, lines, drawStartPoint])
+  }, [isDrawing, currentLine, lines, drawStartPoint, saveToHistory])
 
   const selectLine = useCallback((index: number, coords: Position) => {
     setSelectedLineIndex(index)
     const line = lines[index]
+    // Save the original line state before dragging
+    setLineBeforeDrag({ ...line })
     setLineDragOffset({
       x: coords.x - (line.start.x + line.end.x) / 2,
       y: coords.y - (line.start.y + line.end.y) / 2
@@ -145,19 +185,42 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
     const thicknessOptions = getThicknessOptions(imageWidth, imageHeight)
     const currentIndex = thicknessOptions.indexOf(currentThickness)
     const nextIndex = (currentIndex + 1) % thicknessOptions.length
-    newLines[index].thickness = thicknessOptions[nextIndex]
-    setLines(newLines)
-  }, [lines, imageWidth, imageHeight])
+    newLines[index] = {
+      ...newLines[index],
+      thickness: thicknessOptions[nextIndex]
+    }
+    saveToHistory(newLines)
+  }, [lines, imageWidth, imageHeight, saveToHistory])
 
   const stopDraggingLine = useCallback(() => {
+    // Save to history if line was actually moved
+    if (selectedLineIndex !== null && lineBeforeDrag) {
+      const currentLineState = lines[selectedLineIndex]
+      // Check if line position changed
+      if (currentLineState &&
+          (currentLineState.start.x !== lineBeforeDrag.start.x ||
+           currentLineState.start.y !== lineBeforeDrag.start.y ||
+           currentLineState.end.x !== lineBeforeDrag.end.x ||
+           currentLineState.end.y !== lineBeforeDrag.end.y)) {
+        saveToHistory([...lines])
+      }
+    }
     setSelectedLineIndex(null)
-  }, [])
+    setLineBeforeDrag(null)
+  }, [selectedLineIndex, lineBeforeDrag, lines, saveToHistory])
 
   const undo = useCallback(() => {
-    if (lines.length > 0) {
-      setLines(lines.slice(0, -1))
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1
+      setHistoryIndex(newIndex)
+      // Deep copy to prevent reference issues
+      setLines(linesHistory[newIndex].map(line => ({
+        start: { ...line.start },
+        end: { ...line.end },
+        thickness: line.thickness
+      })))
     }
-  }, [lines])
+  }, [historyIndex, linesHistory])
 
   const getAllLines = useCallback(() => {
     return currentLine ? [...lines, currentLine] : lines
@@ -243,12 +306,13 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
   const deleteLine = useCallback((index: number) => {
     const newLines = [...lines]
     newLines.splice(index, 1)
-    setLines(newLines)
-  }, [lines])
+    saveToHistory(newLines)
+  }, [lines, saveToHistory])
 
   return {
     lines,
-    setLines,
+    setLines: setLinesWithHistory,
+    resetLines,
     currentLine,
     isDrawing,
     selectedLineIndex,

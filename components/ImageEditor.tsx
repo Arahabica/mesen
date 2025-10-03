@@ -488,7 +488,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
 
   const closeImage = useCallback(() => {
     setImageData(null)
-    drawing.setLines([])
+    drawing.resetLines()
     zoomPan.reset()
     setImageSize({ width: 0, height: 0 })
     setCanvasOpacity(0)
