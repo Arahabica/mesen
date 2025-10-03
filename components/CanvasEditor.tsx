@@ -312,7 +312,12 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
   }, []);
 
   const onUndoTooltipClose = useCallback(() => {
+    setShowUndoTooltip(false)
     setShowDownloadTooltip(true)
+  }, []);
+
+  const onDownloadTooltipClose = useCallback(() => {
+    setShowDownloadTooltip(false)
   }, []);
 
   // Show AI tooltip when instruction tooltip is closed
@@ -322,20 +327,28 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
     }
   }, [showAiTooltipTrigger, isImageLoaded]);
 
+  const isMoveLineMode = drawingMode === 'moveLine'
+
   return (
     <div className="relative w-screen h-dvh overflow-hidden bg-gray-900">
-      {drawingMode !== 'moveLine' && (
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 w-12 h-12 bg-gray-700 text-gray-300 rounded-full flex items-center justify-center hover:bg-gray-600 transition-colors z-10"
-          aria-label="閉じる"
-        >
-          <X size={24} />
-        </button>
-      )}
+      <button
+        onClick={onClose}
+        className={`absolute top-4 right-4 w-12 h-12 bg-gray-700 text-gray-300 rounded-full flex items-center justify-center hover:bg-gray-600 transition-colors z-10 transition-opacity duration-200 ${
+          isMoveLineMode ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
+        aria-label="閉じる"
+        aria-hidden={isMoveLineMode}
+        tabIndex={isMoveLineMode ? -1 : undefined}
+      >
+        <X size={24} />
+      </button>
 
-      {drawingMode !== 'moveLine' && (
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 z-10">
+      <div
+        className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 z-10 transition-opacity duration-200 ${
+          isMoveLineMode ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
+        aria-hidden={isMoveLineMode}
+      >
         <div className="relative">
           <button
             onClick={onUndo}
@@ -346,6 +359,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
                 : 'opacity-100 hover:bg-gray-600'
             }`}
             aria-label="元に戻す"
+            tabIndex={isMoveLineMode ? -1 : undefined}
           >
             <RotateCcw size={24} />
           </button>
@@ -367,6 +381,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
                 : 'opacity-100 hover:bg-gray-600'
             }`}
             aria-label="ダウンロード"
+            tabIndex={isMoveLineMode ? -1 : undefined}
           >
             <Download size={24} />
           </button>
@@ -374,6 +389,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
             text="ダウンロード"
             show={showDownloadTooltip}
             duration={1400}
+            onClose={onDownloadTooltipClose}
             className="bottom-full left-1/2 -translate-x-1/2 mb-2"
           />
         </div>
@@ -387,6 +403,7 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
                 : 'opacity-100 hover:bg-gray-600'
             }`}
             aria-label="元の位置に戻す"
+            tabIndex={isMoveLineMode ? -1 : undefined}
           >
             <Expand size={24} />
           </button>
@@ -397,34 +414,37 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
             className="bottom-full left-1/2 -translate-x-1/2 mb-2"
           />
         </div>
-        </div>
-      )}
+      </div>
 
-      {drawingMode !== 'moveLine' && (
-        <div className="absolute bottom-4 right-4 z-10">
-          <div className="relative">
-            <button
-              onClick={onDetectFaces}
-              disabled={isDetectingFaces || !isImageLoaded}
-              className={`w-9 h-9 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all text-base gothic-font ${
-                isDetectingFaces || !isImageLoaded
-                  ? 'opacity-40 cursor-not-allowed'
-                  : 'hover:bg-gray-600'
-              } ${isDetectingFaces ? 'animate-pulse' : ''}`}
-              aria-label="AIで顔を検出"
-            >
-              AI
-            </button>
-            <TemporalTooltip
-              text="AIで自動検出"
-              show={showAiTooltip}
-              duration={2000}
-              onClose={() => setShowAiTooltip(false)}
-              className="bottom-full right-0 mb-2"
-            />
-          </div>
+      <div
+        className={`absolute bottom-4 right-4 z-10 transition-opacity duration-200 ${
+          isMoveLineMode ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
+        aria-hidden={isMoveLineMode}
+      >
+        <div className="relative">
+          <button
+            onClick={onDetectFaces}
+            disabled={isDetectingFaces || !isImageLoaded}
+            className={`w-9 h-9 rounded-full flex items-center justify-center bg-gray-700 text-gray-300 transition-all text-base gothic-font ${
+              isDetectingFaces || !isImageLoaded
+                ? 'opacity-40 cursor-not-allowed'
+                : 'hover:bg-gray-600'
+            } ${isDetectingFaces ? 'animate-pulse' : ''}`}
+            aria-label="AIで顔を検出"
+            tabIndex={isMoveLineMode ? -1 : undefined}
+          >
+            AI
+          </button>
+          <TemporalTooltip
+            text="AIで自動検出"
+            show={showAiTooltip}
+            duration={2000}
+            onClose={() => setShowAiTooltip(false)}
+            className="bottom-full right-0 mb-2"
+          />
         </div>
-      )}
+      </div>
 
       <div
         ref={containerRef}
