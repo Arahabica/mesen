@@ -34,7 +34,6 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
   const initialTouchRef = useRef<{ x: number; y: number } | null>(null)
 
   const drawing = useDrawing(lineThickness, imageSize.width, imageSize.height)
-  const setDrawingLines = drawing.setLines
   const zoomPan = useZoomPan(imageSize, containerRef)
   const touch = useTouch()
   const { showInstructionTooltip, showInstruction, hideInstruction } = useInstructionTooltip()
@@ -44,7 +43,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
     imageSize,
     thicknessOptions: getThicknessOptions(imageSize.width, imageSize.height).filter(option => option > 0),
     existingLines: drawing.lines,
-    onLinesAdd: (lines) => setDrawingLines(prev => [...prev, ...lines])
+    onLinesAddIndividually: drawing.addLinesIndividually
   })
 
   // Calculate dynamic thickness based on current viewport and zoom

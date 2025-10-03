@@ -309,9 +309,31 @@ export function useDrawing(lineThickness: number, imageWidth: number, imageHeigh
     saveToHistory(newLines)
   }, [lines, saveToHistory])
 
+  // Add multiple lines individually to history (one history entry per line)
+  const addLinesIndividually = useCallback((linesToAdd: Line[]) => {
+    setLinesHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1)
+      let currentLines = newHistory[newHistory.length - 1] || []
+
+      linesToAdd.forEach(line => {
+        currentLines = [...currentLines, line]
+        newHistory.push(currentLines.map(l => ({
+          start: { ...l.start },
+          end: { ...l.end },
+          thickness: l.thickness
+        })))
+      })
+
+      return newHistory
+    })
+    setHistoryIndex(prev => prev + linesToAdd.length)
+    setLines(prev => [...prev, ...linesToAdd])
+  }, [historyIndex])
+
   return {
     lines,
     setLines: setLinesWithHistory,
+    addLinesIndividually,
     resetLines,
     currentLine,
     isDrawing,

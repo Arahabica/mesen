@@ -8,7 +8,7 @@ interface UseFaceDetectionOptions {
   imageSize: { width: number; height: number }
   thicknessOptions: number[]
   existingLines: Line[]
-  onLinesAdd: (lines: Line[]) => void
+  onLinesAddIndividually: (lines: Line[]) => void
 }
 
 interface UseFaceDetectionReturn {
@@ -29,7 +29,7 @@ interface UseFaceDetectionReturn {
 }
 
 export function useFaceDetection(options: UseFaceDetectionOptions): UseFaceDetectionReturn {
-  const { imageSize, thicknessOptions, existingLines, onLinesAdd } = options
+  const { imageSize, thicknessOptions, existingLines, onLinesAddIndividually } = options
 
   const [isDetecting, setIsDetecting] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
@@ -141,12 +141,10 @@ export function useFaceDetection(options: UseFaceDetectionOptions): UseFaceDetec
     }
 
     // Convert all green lines to black - add one by one to history
-    for (const line of tempGreenLines) {
-      onLinesAdd([line])
-    }
+    onLinesAddIndividually(tempGreenLines)
     setGreenLines([])
     setColorTransitionProgress(0)
-  }, [onLinesAdd])
+  }, [onLinesAddIndividually])
 
   const detectFaces = useCallback(async (imageDataURL: string, filename: string) => {
     // Setup unhandled rejection handler for this detection session
