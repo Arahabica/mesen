@@ -7,6 +7,8 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
+  // Turbopack configuration (Next.js 16 default bundler)
+  turbopack: {},
   webpack: (config) => {
     // WASMファイルのサポートを追加
     config.module.rules.push({
