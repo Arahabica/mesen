@@ -437,7 +437,7 @@ export default function ImageEditor({ initialImage, onReset }: ImageEditorProps)
       
       ctx.drawImage(img, 0, 0)
       
-      ctx.strokeStyle = 'black'
+      ctx.strokeStyle = '#666666'
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
       

@@ -214,8 +214,8 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.drawImage(baseCanvas, 0, 0)
 
-    // Draw only confirmed lines (black)
-    ctx.strokeStyle = 'black'
+    // Draw only confirmed lines (gray)
+    ctx.strokeStyle = '#666666'
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
 
@@ -246,8 +246,8 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
 
-    // Draw confirmed lines (black)
-    ctx.strokeStyle = 'black'
+    // Draw confirmed lines (gray)
+    ctx.strokeStyle = '#666666'
     lines.forEach(line => {
       ctx.lineWidth = line.thickness
       ctx.beginPath()
@@ -256,17 +256,19 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
       ctx.stroke()
     })
 
-    // Draw green lines (completed animation but not yet converted to black)
-    // Interpolate color from green to black based on colorTransitionProgress
+    // Draw green lines (completed animation but not yet converted to gray)
+    // Interpolate color from green to gray (#666666) based on colorTransitionProgress
     if (colorTransitionProgress > 0) {
-      // Interpolate RGB from green (0, 255, 0) to black (0, 0, 0)
-      const greenValue = Math.round(255 * (1 - colorTransitionProgress))
-      ctx.strokeStyle = `rgb(0, ${greenValue}, 0)`
+      // Interpolate RGB from green (0, 255, 0) to gray (102, 102, 102)
+      const r = Math.round(102 * colorTransitionProgress)
+      const g = Math.round(255 + (102 - 255) * colorTransitionProgress)
+      const b = Math.round(102 * colorTransitionProgress)
+      ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`
 
-      // Reduce shadow as color transitions to black
+      // Reduce shadow as color transitions to gray
       const shadowIntensity = 10 * (1 - colorTransitionProgress)
       ctx.shadowBlur = shadowIntensity
-      ctx.shadowColor = `rgb(0, ${greenValue}, 0)`
+      ctx.shadowColor = `rgb(0, ${Math.round(255 * (1 - colorTransitionProgress))}, 0)`
     } else {
       ctx.strokeStyle = '#00ff00'
       ctx.shadowBlur = 10
@@ -311,9 +313,9 @@ const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(({
       ctx.shadowBlur = 0
     }
 
-    // Draw current line (black)
+    // Draw current line (gray)
     if (currentLine) {
-      ctx.strokeStyle = 'black'
+      ctx.strokeStyle = '#666666'
       ctx.lineWidth = currentLine.thickness
       ctx.beginPath()
       ctx.moveTo(currentLine.start.x, currentLine.start.y)
